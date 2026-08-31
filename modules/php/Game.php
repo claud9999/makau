@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Bga\Games\makaucloudnein;
 
-use Bga\Games\makaucloudnein\States\PlayerTurn;
+use Bga\Games\makaucloudnein\States\NewHand;
 use Bga\GameFramework\Components\Counters\PlayerCounter;
 use Bga\GameFramework\Components\Decks\DeckFactory;
 
@@ -116,20 +116,9 @@ class Game extends \Bga\GameFramework\Table
 
         $this->cards->createCards($cards, 'deck');
 
-        $this->cards->shuffle('deck');
-        // Deal 13 cards to each players
-        $players = $this->loadPlayersBasicInfos();
-        foreach ($players as $player_id => $player) {
-            $this->cards->pickCards(5, 'deck', $player_id);
-        }
-
-        // TODO: verify that this card is a valid discard, otherwise keep drawing
-        $this->cards->pickCardForLocation(1, 'deck', 'discards');
-
-        // Activate first player once everything has been initialized and ready.
         $this->activeNextPlayer();
 
-        return PlayerTurn::class;
+        return NewHand::class;
     }
 
     /**
@@ -159,4 +148,14 @@ class Game extends \Bga\GameFramework\Table
         $this->cards->moveCard($card['id'], 'hand', $playerId);
     }
     */
+
+    function getPlayableCards($player_id): array
+    {
+        $hand = $this->cards->getPlayerHand($player_id);
+        $playable_card_ids = [];
+        $all_ids = array_keys($hand);
+
+        foreach ($hand as $card) if ($card['type'] != 2) $playable_card_ids[] = $card['id'];
+        return $playable_card_ids;
+    }
 }

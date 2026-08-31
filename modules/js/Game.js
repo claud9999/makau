@@ -10,11 +10,11 @@ class PlayerTurn {
     onEnteringState(_args, isCurrentPlayerActive) {
         if (isCurrentPlayerActive) {
             this.game.hand.setSelectionMode('multiple');
+
             this.bga.statusBar.setTitle(_('It\'s your turn...'));
 
             this.bga.statusBar.addActionButton(_('Play'), () => {
-                debugger;
-                this.bga.actions.performAction('actPlay', { cards: this.game.hand.selectedCardIds });
+                this.bga.actions.performAction('actPlay', { cards: this.game.hand.selectedCards.map((card) => card.id) });
             });
 
             this.bga.statusBar.addActionButton(_('Draw'), () => this.bga.actions.performAction('actDraw'));
@@ -112,13 +112,8 @@ export class Game {
         this.hand.addCards(Array.from(Object.values(this.gamedatas.hand)));
         this.discards.addCards(Array.from(Object.values(this.gamedatas.discards)));
 
-        this.deck.onCardClick = (card) => {
-            debugger;
-            console.log('Deck card clicked: ', card);
-        };
-
         this.hand.onCardClick = (card) => {
-            if (this.gamedatas.gamestate.name !== "PlayerTurn") this.hand.unselectAll();
+            if (this.gamedatas.gamestate.name != "PlayerTurn") this.hand.unselectAll();
         };
         // Setup game notifications to handle (see "setupNotifications" method below)
         this.setupNotifications();
@@ -134,15 +129,20 @@ export class Game {
         });
     }
 
-    async notif_newHand(args) {
+    async notif_NewHand(args) {
         // We received a new full hand of cards.
         this.hand.removeAll();
         this.hand.addCards(Array.from(Object.values(args.hand)));
     }
 
-    async notif_playCard(args) {
+    async notif_PlayCard(args) {
         // Play a card on the table
         debugger;
         this.discards.addCards([args.card]);
+    }
+
+    async notif_invalidPlay(args) {
+        debugger;
+        this.hand.unselectAll();
     }
 }

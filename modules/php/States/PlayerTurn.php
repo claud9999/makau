@@ -9,6 +9,8 @@ use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\PossibleAction;
 use Bga\GameFramework\States\GameState;
 use Bga\GameFramework\UserException;
+use Bga\GameFramework\Actions\Types\IntArrayParam;
+
 
 class PlayerTurn extends GameState
 {
@@ -37,12 +39,27 @@ class PlayerTurn extends GameState
     }
 
     #[PossibleAction]
-    public function actPlay(int $activePlayerId, array $args)
+    public function actPlay(#[IntArrayParam()] array $cards, int $activePlayerId)
     {
-        $cards = $args['cards'];
+        $game = $this->game;
+
+        $discards = $game->discards->getCards();
+        $top = $discards[count($discards) - 1];
+
+        // TODO: verify rules
+
         for ($i = 0; $i < count($cards); $i++) {
             $cardId = $cards[$i];
             $currentCard = $game->cards->getCard($cardId);
+            if ($currentCard['type'] != $top['type']) {
+                $game->notify->player(
+                    $activePlayerId, 
+                    "invalidPlay",
+                    clienttranslate('Card ${currentCard} cannot be played on ${top}'),
+                    ['card' => $currentCard]
+                );
+            }
+
             $game->cards->moveCard($cardId, 'discards'); // Move the card to the "discards" location (the card is now on the table)
             $game->notify->all(
                 'playCard',
