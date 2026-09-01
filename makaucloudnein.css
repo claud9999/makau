@@ -29,7 +29,7 @@
   height: 100%;
 }
 
-#discards {
+#discard {
   width: calc(100% - var(--h-card-width));
   height: var(--h-card-height);
 }

@@ -5,3 +5,4 @@
 * disable unplayable cards
 * tooltips/graphics to indicate special cards
 * enforce rules
+* show card counts for opponents

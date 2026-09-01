@@ -34,7 +34,7 @@ class NewHand extends GameState
             $this->bga->notify->player($player_id, 'NewHand', '', array('cards' => $cards));
         }
 
-        $game->cards->pickCardForLocation('deck', 'discards');
+        $game->cards->pickCardForLocation('deck', 'discard');
 
         $first_player = (int) $this->game->getActivePlayerId();
         $this->game->gamestate->changeActivePlayer($first_player);

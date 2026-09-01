@@ -11,6 +11,8 @@ use Bga\GameFramework\Components\Decks\DeckFactory;
 class Game extends \Bga\GameFramework\Table
 {
     public array $card_types;
+    public int $skipcount;
+    public int $drawcount;
 
     public function __construct()
     {
@@ -19,7 +21,7 @@ class Game extends \Bga\GameFramework\Table
         $this->cards = $this->deckFactory->createDeck('card'); // 'card' is the name of the database
 
         $this->card_types = [
-            "suites" => [
+            "suits" => [
                 1 => [
                     'name' => clienttranslate('Spade'),
                 ],
@@ -49,6 +51,8 @@ class Game extends \Bga\GameFramework\Table
                 14 => ['name' => clienttranslate('A')]
             ]
         ];
+        $this->skipcount = 0;
+        $this->drawcount = 0;
     }
 
     public function getGameProgression()
@@ -70,10 +74,10 @@ class Game extends \Bga\GameFramework\Table
         );
 
         $result['deck'] = $this->cards->countCardsInLocation('deck');
-
         $result['hand'] = $this->cards->getCardsInLocation('hand', $currentPlayerId);
-
-        $result['discards'] = $this->cards->getCardsInLocation('discards');
+        $result['discard'] = $this->cards->getCardsInLocation('discard');
+        $result['skipcount'] = $this->skipcount;
+        $result['drawcount'] = $this->drawcount;
 
         return $result;
     }
@@ -105,16 +109,17 @@ class Game extends \Bga\GameFramework\Table
         // Init global values with their initial values.
 
         $cards = [];
-        foreach ($this->card_types["suites"] as $suit => $suit_info) {
+        foreach ($this->card_types["suits"] as $suit => $suit_info) {
             // spade, heart, diamond, club
             foreach ($this->card_types["types"] as $value => $info_value) {
                 //  2, 3, 4, ... K, A
                 $cards[] = ['type' => $suit, 'type_arg' => $value, 'nbr' => 1];
             }
         }
-        $this->cards->createCards([], 'discards');
-
+        
         $this->cards->createCards($cards, 'deck');
+        $this->skipcount = 0;
+        $this->drawcount = 0;
 
         $this->activeNextPlayer();
 
