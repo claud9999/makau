@@ -120,11 +120,11 @@ export class Game {
             document.getElementById("hand")
         );
 
-        this.discard = new BgaCards.DiscardDeck(
+        this.discard = new BgaCards.LineStock(
             this.cardsManager,
             document.getElementById("discard")
         );
-
+debugger;
         this.hand.addCards(Array.from(Object.values(this.gamedatas.hand)));
         this.discard.addCards(Array.from(Object.values(this.gamedatas.discard)));
 
@@ -181,7 +181,7 @@ export class Game {
             let selectablecards = [];
             for (let i = 0; i < handCards.length; i++) {
                 let card = handCards[i];
-                if (card.type_arg == topDiscard.type_arg || card.type == topDiscard.type || card.type_arg == 12) {
+                if (card.type_arg == topDiscard.type_arg || card.type == topDiscard.type || card.type_arg == 12 || topDiscard.type_arg == 12) {
                     selectablecards.push(card);
                 }
             }
@@ -204,13 +204,13 @@ export class Game {
 
     async notif_newHand(args) {
         // We received a new full hand of cards.
-        this.hand.removeAll();
-        this.hand.addCards(Array.from(Object.values(args.hand)));
+        await this.hand.removeAll();
+        await this.hand.addCards(Array.from(Object.values(args.hand)));
     }
 
     async notif_drawCard(args) {
         if (args._private) {
-            this.hand.addCard(args._private.card);
+            await this.hand.addCard(args._private.card);
             this.setPlayOptions();
         }
     }

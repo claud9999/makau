@@ -58,13 +58,24 @@ class PlayerTurn extends GameState
     public function actPlay(#[IntArrayParam()] array $cards, int $activePlayerId)
     {
         $game = $this->game;
+        $game->debug("Player $activePlayerId plays cards: " . implode(', ', $cards));
+        $discards = $game->cards->getCardsInLocation('discard');
+        $top = end($discards);
 
-        $top = $game->cards->getCardOnTop('discard');
+        $game->debug("Discard pile now has cards: " . json_encode($game->getCardNames($discards)));
 
+        $game->debug("Top card on the discard pile: " . $game->getCardName($top));
+
+        // check all the cards to make sure they can be played in sequence
         for ($i = 0; $i < count($cards); $i++) {
             $cardId = $cards[$i];
             $currentCard = $game->cards->getCard($cardId);
-            if ($currentCard['type'] == $top['type'] || $currentCard['type_arg'] == $top['type_arg']) {
+            if (
+                $currentCard['type'] == $top['type']
+                || $currentCard['type_arg'] == $top['type_arg']
+                || $top['type_arg'] == 12 // queen
+                || $currentCard['type_arg'] == 12 // queen
+            ) {
                 $top = $currentCard;
             } else {
                 $game->notify->player(
@@ -85,11 +96,12 @@ class PlayerTurn extends GameState
             }
         }
 
+        // valid play, move the cards to the discard pile
         for ($i = 0; $i < count($cards); $i++) {
             $cardId = $cards[$i];
             $currentCard = $game->cards->getCard($cardId);
 
-            $game->cards->insertCardOnExtremePosition($cardId, 'discard', true); // Move the card to the "discard" location (the card is now on the table)
+            $game->cards->insertCardOnExtremePosition($cardId, 'discard', true);
             $game->notify->all(
                 'playCard',
                 clienttranslate('${player_name} plays ${rank} of ${suit}'),
@@ -103,6 +115,9 @@ class PlayerTurn extends GameState
                 ]
             );
         }
+
+        $game->debug("Discard pile now has cards: " . json_encode($game->getCardNames($game->cards->getCardsInLocation('discard'))));
+
         return NextPlayer::class;
     }
 

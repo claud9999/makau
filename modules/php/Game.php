@@ -116,7 +116,7 @@ class Game extends \Bga\GameFramework\Table
                 $cards[] = ['type' => $suit, 'type_arg' => $value, 'nbr' => 1];
             }
         }
-        
+
         $this->cards->createCards($cards, 'deck');
         $this->skipcount = 0;
         $this->drawcount = 0;
@@ -153,7 +153,20 @@ class Game extends \Bga\GameFramework\Table
         $this->cards->moveCard($card['id'], 'hand', $playerId);
     }
     */
+    function getCardName($card): string
+    {
+        return $this->card_types['types'][$card['type_arg']]['name'] . ' of ' . $this->card_types['suits'][$card['type']]['name'];
+    }    
 
+    function getCardNames($cards): array
+    {
+        $names = [];
+        foreach ($cards as $card) {
+            $names[] = $this->getCardName($card);
+        }
+        return $names;
+    }
+    
     function getPlayableCards($player_id): array
     {
         $hand = $this->cards->getPlayerHand($player_id);
@@ -162,5 +175,13 @@ class Game extends \Bga\GameFramework\Table
 
         foreach ($hand as $card) if ($card['type'] != 2) $playable_card_ids[] = $card['id'];
         return $playable_card_ids;
+    }
+
+    public function isSpecial($card)
+    {
+        return $card['type_arg'] == 12 // queen
+            || $card['type_arg'] == 2 // draw 2
+            || $card['type_arg'] == 3 // draw 3
+        ;
     }
 }

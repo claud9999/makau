@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace Bga\Games\makaucloudnein\States;
 
 use Bga\Games\makaucloudnein\Game;
@@ -19,26 +21,36 @@ class NewHand extends GameState
   }
 
   // The action we do when entering the state
-    public function onEnteringState()
-    {
-        $game = $this->game;
+  public function onEnteringState()
+  {
+    $game = $this->game;
 
-        $game->cards->moveAllCardsInLocation(null, "deck");
+    $game->cards->moveAllCardsInLocation(null, "deck");
 
-        $game->cards->shuffle('deck');
+    $game->cards->shuffle('deck');
 
-        $players = $game->loadPlayersBasicInfos();
-        foreach ($players as $player_id => $player) {
-            $cards = $game->cards->pickCards(5, 'deck', $player_id);
-            // Notify player about his cards
-            $this->bga->notify->player($player_id, 'NewHand', '', array('cards' => $cards));
-        }
-
-        $game->cards->pickCardForLocation('deck', 'discard');
-
-        $first_player = (int) $this->game->getActivePlayerId();
-        $this->game->gamestate->changeActivePlayer($first_player);
-
-        return PlayerTurn::class;
+    $players = $game->loadPlayersBasicInfos();
+    foreach ($players as $player_id => $player) {
+      $cards = $game->cards->pickCards(5, 'deck', $player_id);
+      $this->bga->notify->player($player_id, 'newHand', '', array('cards' => $cards));
     }
+
+    $game->cards->pickCardForLocation('deck', 'discard');
+    $game->cards->pickCardForLocation('deck', 'discard');
+    $game->cards->pickCardForLocation('deck', 'discard');
+    $game->cards->pickCardForLocation('deck', 'discard');
+    $game->cards->pickCardForLocation('deck', 'discard');
+    $game->cards->pickCardForLocation('deck', 'discard');
+
+    $game->debug("Discard pile now has cards: " . json_encode($game->getCardNames($game->cards->getCardsInLocation('discard'))));
+
+    while ($game->isSpecial($game->cards->getCardOnTop('discard'))) {
+      $game->cards->pickCardForLocation('deck', 'discard');
+    }
+
+    $first_player = (int) $this->game->getActivePlayerId();
+    $this->game->gamestate->changeActivePlayer($first_player);
+
+    return PlayerTurn::class;
+  }
 }
