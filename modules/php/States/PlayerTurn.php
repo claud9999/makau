@@ -44,8 +44,8 @@ class PlayerTurn extends GameState
             'player_name' => $game->getPlayerNameById($activePlayerId),
             '_private' => [
                 $activePlayerId => new NotificationMessage(clienttranslate('You take ${_private.rank} of ${_private.suit} from the deck'), [
-                    'rank' => $game->card_types['ranks'][$card['rank']]['name'],
-                    'suit' => $game->card_types['suits'][$card['suit']]['name'],
+                    'rank' => $game->card_types['ranks'][$card->rank]['name'],
+                    'suit' => $game->card_types['suits'][$card->suit]['name'],
                     'card' => $card,
                     'i18n' => ['rank', 'suit']
                 ])
@@ -60,21 +60,19 @@ class PlayerTurn extends GameState
         $game = $this->game;
         $game->debug("Player $activePlayerId plays cards: " . implode(', ', $cards));
         $discards = $game->cards->getItemsInLocation('discard');
-        $top = end($discards);
+        $top = $game->cards->getItemOnTop('discard');
 
         $game->debug("Discard pile now has cards: " . json_encode($game->getCardNames($discards)));
-
-        $game->debug("Top card on the discard pile: " . $game->getCardName($top));
 
         // check all the cards to make sure they can be played in sequence
         for ($i = 0; $i < count($cards); $i++) {
             $cardId = $cards[$i];
-            $currentCard = $game->cards->getItem($cardId);
+            $currentCard = $game->cards->getItemById($cardId);
             if (
-                $currentCard['suit'] == $top['suit']
-                || $currentCard['rank'] == $top['rank']
-                || $top['rank'] == 12 // queen
-                || $currentCard['rank'] == 12 // queen
+                $currentCard->suit == $top->suit
+                || $currentCard->rank == $top->rank
+                || $top->rank == 12 // queen
+                || $currentCard->rank == 12 // queen
             ) {
                 $top = $currentCard;
             } else {
@@ -86,10 +84,10 @@ class PlayerTurn extends GameState
                         'i18n' => array('top_rank', 'top_suit', 'card_rank', 'card_suit'),
                         'top' => $top,
                         'card' => $currentCard,
-                        'top_rank' => $game->card_types['ranks'][$top['rank']]['name'],
-                        'top_suit' => $game->card_types['suits'][$top['suit']]['name'],
-                        'card_rank' => $game->card_types['ranks'][$currentCard['rank']]['name'],
-                        'card_suit' => $game->card_types['suits'][$currentCard['suit']]['name']
+                        'top_rank' => $game->card_types['ranks'][$top->rank]['name'],
+                        'top_suit' => $game->card_types['suits'][$top->suit]['name'],
+                        'card_rank' => $game->card_types['ranks'][$currentCard->rank]['name'],
+                        'card_suit' => $game->card_types['suits'][$currentCard->suit]['name']
                     ]
                 );
                 return null; // Stop the action if the play is invalid
@@ -99,7 +97,7 @@ class PlayerTurn extends GameState
         // valid play, move the cards to the discard pile
         for ($i = 0; $i < count($cards); $i++) {
             $cardId = $cards[$i];
-            $currentCard = $game->cards->getItem($cardId);
+            $currentCard = $game->cards->getItemById($cardId);
 
             $game->cards->moveItem($cardId, 'discard');
             $game->notify->all(
@@ -110,8 +108,8 @@ class PlayerTurn extends GameState
                     'card' => $currentCard,
                     'player_id' => $activePlayerId,
                     'player_name' => $game->getPlayerNameById($activePlayerId),
-                    'rank' => $game->card_types['ranks'][$currentCard['rank']]['name'],
-                    'suit' => $game->card_types['suits'][$currentCard['suit']]['name']
+                    'rank' => $game->card_types['ranks'][$currentCard->rank]['name'],
+                    'suit' => $game->card_types['suits'][$currentCard->suit]['name']
                 ]
             );
         }

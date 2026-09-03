@@ -19,8 +19,7 @@ class PlayerTurn {
     }
 
     onEnteringState(_args, isCurrentPlayerActive) {
-        this.game.hand.setSelectionMode('none');
-        debugger;
+        this.game.hand.setSelectionMode('none', []);
 
         this.game.playButton = this.bga.statusBar.addActionButton(_('Play'), () =>
             this.bga.actions.performAction('actPlay', { cards: this.game.hand.selectedCards.map((card) => card.id) }));
@@ -95,16 +94,17 @@ export class Game {
             cardHeight: cardHeight,
             cardBorderRadius: "5%",
             setupFrontDiv: (card, div) => {
-                div.dataset.type = card.type; // suit 1..4
-                div.dataset.typeArg = card.type_arg; // value 2..14
-                div.style.backgroundPositionX = `calc(100% / 14 * (${card.type_arg} - 2))`; // 14 is number of columns in stock image minus 1
-                div.style.backgroundPositionY = `calc(100% / 3 * (${card.type} - 1))`; // 3 is number of rows in stock image minus 1
-                this.bga.gameui.addTooltipHtml(div.id, `tooltip of ${card.type}`);
+                div.dataset.suit = card.suit; // 1..4
+                div.dataset.rank = card.rank; // value 2..14
+                div.style.backgroundPositionX = `calc(100% / 14 * (${card.rank} - 2))`; // 14 is number of columns in stock image minus 1
+                div.style.backgroundPositionY = `calc(100% / 3 * (${card.suit} - 1))`; // 3 is number of rows in stock image minus 1
+                this.bga.gameui.addTooltipHtml(div.id, `${card.rank} of ${card.suit}`);
             },
             setupBackDiv: (card, div) => {
                 div.style.backgroundPositionX = `100%`;
                 div.style.backgroundPositionY = `0%`;
-            }
+            },
+            isCardVisible: (card) => { return card.rank > 0; },
         });
 
         this.deck = new BgaCards.Deck(this.cardsManager, document.getElementById('deck'), {
@@ -112,7 +112,7 @@ export class Game {
             counter: {
                 position: 'center',
                 extraClasses: 'text-shadow',
-            }
+            },
         });
 
         this.hand = new BgaCards.HandStock(
@@ -124,7 +124,7 @@ export class Game {
             this.cardsManager,
             document.getElementById("discard")
         );
-debugger;
+
         this.hand.addCards(Array.from(Object.values(this.gamedatas.hand)));
         this.discard.addCards(Array.from(Object.values(this.gamedatas.discard)));
 

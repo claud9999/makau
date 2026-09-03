@@ -124,13 +124,13 @@ class Game extends \Bga\GameFramework\Table
 
     function getCardName($card): string
     {
-        return $this->card_types['suits'][$card['ranks']]['name'] . ' of ' . $this->card_types['suits'][$card['ranks']]['name'];
+        return $this->card_types['suits'][$card->suit]['name'] . ' of ' . $this->card_types['ranks'][$card->rank]['name'];
     }
 
-    function getCardNames($cardManager): array
+    function getCardNames($cards): array
     {
         $names = [];
-        foreach ($cardManager as $card) {
+        foreach ($cards as $card) {
             $names[] = $this->getCardName($card);
         }
         return $names;
@@ -142,15 +142,15 @@ class Game extends \Bga\GameFramework\Table
         $playable_card_ids = [];
         $all_ids = array_keys($hand);
 
-        foreach ($hand as $card) if ($card['rank'] != 2) $playable_card_ids[] = $card['id'];
+        foreach ($hand as $card) if ($card->rank != 2) $playable_card_ids[] = $card->id;
         return $playable_card_ids;
     }
 
     public function isSpecial($card)
     {
-        return $card['rank'] == 12 // queen
-            || $card['rank'] == 2 // draw 2
-            || $card['rank'] == 3 // draw 3
+        return $card->rank == 12 // queen
+            || $card->rank == 2 // draw 2
+            || $card->rank == 3 // draw 3
         ;
     }
 }
