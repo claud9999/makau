@@ -6,7 +6,7 @@ namespace Bga\Games\makaucloudnein;
 
 use Bga\Games\makaucloudnein\States\NewHand;
 use Bga\GameFramework\Components\Counters\PlayerCounter;
-use Bga\Games\makaucloudnein\CardManager;
+use Bga\Games\makaucloudnein\Cards\CardManager;
 
 class Game extends \Bga\GameFramework\Table
 {
@@ -19,6 +19,7 @@ class Game extends \Bga\GameFramework\Table
         parent::__construct();
 
         $this->cardManager = new CardManager($this);
+        $this->cards = $this->cardManager->cards;
 
         $this->card_types = [
             "suits" => [
@@ -35,7 +36,7 @@ class Game extends \Bga\GameFramework\Table
                     'name' => clienttranslate('Diamond'),
                 ]
             ],
-            "types" => [
+            "ranks" => [
                 2 => ['name' => '2'],
                 3 => ['name' => '3'],
                 4 => ['name' => '4'],
@@ -51,6 +52,7 @@ class Game extends \Bga\GameFramework\Table
                 14 => ['name' => clienttranslate('A')]
             ]
         ];
+        
         $this->skipcount = 0;
         $this->drawcount = 0;
     }
@@ -64,6 +66,7 @@ class Game extends \Bga\GameFramework\Table
 
     protected function getAllDatas(int $currentPlayerId): array
     {
+        $cards = $this->cards;
         $result = [];
         // WARNING: We must only return information visible by the current player (using $currentPlayerId).
 
@@ -73,9 +76,9 @@ class Game extends \Bga\GameFramework\Table
             "SELECT `player_id` AS `id`, `player_score` AS `score` FROM `player`"
         );
 
-        $result['deck'] = $this->cardManager->countCardsInLocation('deck');
-        $result['hand'] = $this->cardManager->getCardsInLocation('hand', $currentPlayerId);
-        $result['discard'] = $this->cardManager->getCardsInLocation('discard');
+        $result['deck'] = $cards->countItemsInLocation('deck');
+        $result['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
+        $result['discard'] = $cards->getItemsInLocation('discard');
         $result['skipcount'] = $this->skipcount;
         $result['drawcount'] = $this->drawcount;
 
@@ -86,7 +89,7 @@ class Game extends \Bga\GameFramework\Table
     {
         $this->cardManager->initDb();
         $this->cardManager->setup();
-        $this->cards = $this->cardManager->items;
+        $this->cards = $this->cardManager->cards;
 
         $gameinfos = $this->getGameinfos();
         $default_colors = $gameinfos['player_colors'];
@@ -119,36 +122,9 @@ class Game extends \Bga\GameFramework\Table
         return NewHand::class;
     }
 
-    /**
-     * Example of debug function.
-     * Here, jump to a state you want to test (by default, jump to next player state)
-     * You can trigger it on Studio using the Debug button on the right of the top bar.
-     */
-    public function debug_goToState(int $state = 3)
-    {
-        $this->gamestate->jumpToState($state);
-    }
-
-    /**
-     * Another example of debug function, to easily test the zombie code.
-     */
-    public function debug_playOneMove()
-    {
-        $this->bga->debug->playUntil(fn(int $count) => $count == 1);
-    }
-
-    /*
-    Another example of debug function, to easily create situations you want to test.
-    Here, put a card you want to test in your hand (assuming you use the Deck component).
-
-    public function debug_setCardInHand(int $cardType, int $playerId) {
-        $card = array_values($this->cardManager->getCardsOfType($cardType))[0];
-        $this->cardManager->moveCard($card['id'], 'hand', $playerId);
-    }
-    */
     function getCardName($card): string
     {
-        return $this->card_types['types'][$card['type_arg']]['name'] . ' of ' . $this->card_types['suits'][$card['type']]['name'];
+        return $this->card_types['suits'][$card['ranks']]['name'] . ' of ' . $this->card_types['suits'][$card['ranks']]['name'];
     }
 
     function getCardNames($cardManager): array
@@ -166,15 +142,15 @@ class Game extends \Bga\GameFramework\Table
         $playable_card_ids = [];
         $all_ids = array_keys($hand);
 
-        foreach ($hand as $card) if ($card['type'] != 2) $playable_card_ids[] = $card['id'];
+        foreach ($hand as $card) if ($card['rank'] != 2) $playable_card_ids[] = $card['id'];
         return $playable_card_ids;
     }
 
     public function isSpecial($card)
     {
-        return $card['type_arg'] == 12 // queen
-            || $card['type_arg'] == 2 // draw 2
-            || $card['type_arg'] == 3 // draw 3
+        return $card['rank'] == 12 // queen
+            || $card['rank'] == 2 // draw 2
+            || $card['rank'] == 3 // draw 3
         ;
     }
 }

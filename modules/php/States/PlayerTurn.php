@@ -37,15 +37,15 @@ class PlayerTurn extends GameState
     public function actDraw(int $activePlayerId)
     {
         $game = $this->game;
-        $card = $game->cards->pickItem('deck', $activePlayerId);
+        $card = $game->cards->pickItem('deck', ['hand', $activePlayerId]);
 
         $game->notify->all('drawCard', clienttranslate('${player_name} takes a card from the deck'), [
             'playerId' => $activePlayerId,
             'player_name' => $game->getPlayerNameById($activePlayerId),
             '_private' => [
                 $activePlayerId => new NotificationMessage(clienttranslate('You take ${_private.rank} of ${_private.suit} from the deck'), [
-                    'rank' => $game->card_types['types'][$card['type_arg']]['name'],
-                    'suit' => $game->card_types['suits'][$card['type']]['name'],
+                    'rank' => $game->card_types['ranks'][$card['rank']]['name'],
+                    'suit' => $game->card_types['suits'][$card['suit']]['name'],
                     'card' => $card,
                     'i18n' => ['rank', 'suit']
                 ])
@@ -71,10 +71,10 @@ class PlayerTurn extends GameState
             $cardId = $cards[$i];
             $currentCard = $game->cards->getItem($cardId);
             if (
-                $currentCard['type'] == $top['type']
-                || $currentCard['type_arg'] == $top['type_arg']
-                || $top['type_arg'] == 12 // queen
-                || $currentCard['type_arg'] == 12 // queen
+                $currentCard['suit'] == $top['suit']
+                || $currentCard['rank'] == $top['rank']
+                || $top['rank'] == 12 // queen
+                || $currentCard['rank'] == 12 // queen
             ) {
                 $top = $currentCard;
             } else {
@@ -86,10 +86,10 @@ class PlayerTurn extends GameState
                         'i18n' => array('top_rank', 'top_suit', 'card_rank', 'card_suit'),
                         'top' => $top,
                         'card' => $currentCard,
-                        'top_rank' => $game->card_types['types'][$top['type_arg']]['name'],
-                        'top_suit' => $game->card_types['suits'][$top['type']]['name'],
-                        'card_rank' => $game->card_types['types'][$currentCard['type_arg']]['name'],
-                        'card_suit' => $game->card_types['suits'][$currentCard['type']]['name']
+                        'top_rank' => $game->card_types['ranks'][$top['rank']]['name'],
+                        'top_suit' => $game->card_types['suits'][$top['suit']]['name'],
+                        'card_rank' => $game->card_types['ranks'][$currentCard['rank']]['name'],
+                        'card_suit' => $game->card_types['suits'][$currentCard['suit']]['name']
                     ]
                 );
                 return null; // Stop the action if the play is invalid
@@ -110,8 +110,8 @@ class PlayerTurn extends GameState
                     'card' => $currentCard,
                     'player_id' => $activePlayerId,
                     'player_name' => $game->getPlayerNameById($activePlayerId),
-                    'rank' => $game->card_types['types'][$currentCard['type_arg']]['name'],
-                    'suit' => $game->card_types['suits'][$currentCard['type']]['name']
+                    'rank' => $game->card_types['ranks'][$currentCard['rank']]['name'],
+                    'suit' => $game->card_types['suits'][$currentCard['suit']]['name']
                 ]
             );
         }

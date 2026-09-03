@@ -1,6 +1,6 @@
 <?php
 
-namespace Bga\Games\makaucloudnein;
+namespace Bga\Games\makaucloudnein\Cards;
 
 use Bga\GameFramework\Components\ItemManager\Item;
 use Bga\GameFramework\Components\ItemManager\ItemField;
@@ -16,7 +16,7 @@ class Card
     public string $location;
 
     #[ItemField(kind: ItemFieldKind::LOCATION, locationIndex: 1)]
-    public int|string|null $locationArg;
+    public ?int $locationArg;
 
     #[ItemField(kind: ItemFieldKind::ORDER)]
     public int $order;
@@ -25,7 +25,7 @@ class Card
     public int $suit;
 
     #[ItemField]
-    public int $value;
+    public int $rank;
 
     // This property has no #[ItemField], so it is not stored in the database.
     public string $displayName;

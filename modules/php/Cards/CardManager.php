@@ -1,11 +1,11 @@
 <?php
 
-namespace Bga\Games\makaucloudnein;
+namespace Bga\Games\makaucloudnein\Cards;
 
 use Bga\GameFramework\Components\ItemManager\ItemLocation;
 use Bga\GameFramework\Components\ItemManager\ItemManager;
 use Bga\Games\makaucloudnein\Game;
-use Bga\Games\makaucloudnein\Card;
+use Bga\Games\makaucloudnein\Cards\Card;
 
 class CardManager
 {
@@ -19,18 +19,20 @@ class CardManager
         );
     }
 
-    public function initDb() {
+    public function initDb()
+    {
         $this->cards->initDb();
     }
 
-    public function setup() {
+    public function setup()
+    {
         $cards = [];
         foreach ([1, 2, 3, 4] as $suit) {
-            foreach (range(2, 14) as $value) {
+            foreach (range(2, 14) as $rank) {
                 $cards[] = [
                     'location' => 'deck',
                     'suit' => $suit,
-                    'value' => $value,
+                    'rank' => $rank,
                 ];
             }
         }

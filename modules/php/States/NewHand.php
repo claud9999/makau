@@ -30,8 +30,8 @@ class NewHand extends GameState
     $game->cards->shuffle('deck');
 
     $players = $game->loadPlayersBasicInfos();
-    foreach ($players as $player_id => $player) {
-      $cards = $game->cards->pickItems(5, 'deck', $player_id);
+    foreach (array_keys($players) as $player_id) {
+      $cards = $game->cards->pickItems(5, 'deck', ['hand', $player_id]);
       $this->bga->notify->player($player_id, 'newHand', '', array('cards' => $cards));
     }
 
@@ -50,7 +50,7 @@ class NewHand extends GameState
 
     $first_player = (int) $this->game->getActivePlayerId();
     $this->game->gamestate->changeActivePlayer($first_player);
-
+    
     return PlayerTurn::class;
   }
 }

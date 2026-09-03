@@ -181,7 +181,7 @@ debugger;
             let selectablecards = [];
             for (let i = 0; i < handCards.length; i++) {
                 let card = handCards[i];
-                if (card.type_arg == topDiscard.type_arg || card.type == topDiscard.type || card.type_arg == 12 || topDiscard.type_arg == 12) {
+                if (card.suit == topDiscard.suit || card.rank == topDiscard.rank || card.rank == 12 || topDiscard.rank == 12) {
                     selectablecards.push(card);
                 }
             }
