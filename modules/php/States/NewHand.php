@@ -25,27 +25,27 @@ class NewHand extends GameState
   {
     $game = $this->game;
 
-    $game->cards->moveAllCardsInLocation(null, "deck");
+    $game->cards->moveAllItemsInLocation(null, "deck");
 
     $game->cards->shuffle('deck');
 
     $players = $game->loadPlayersBasicInfos();
     foreach ($players as $player_id => $player) {
-      $cards = $game->cards->pickCards(5, 'deck', $player_id);
+      $cards = $game->cards->pickItems(5, 'deck', $player_id);
       $this->bga->notify->player($player_id, 'newHand', '', array('cards' => $cards));
     }
 
-    $game->cards->pickCardForLocation('deck', 'discard');
-    $game->cards->pickCardForLocation('deck', 'discard');
-    $game->cards->pickCardForLocation('deck', 'discard');
-    $game->cards->pickCardForLocation('deck', 'discard');
-    $game->cards->pickCardForLocation('deck', 'discard');
-    $game->cards->pickCardForLocation('deck', 'discard');
+    $game->cards->pickItem('deck', 'discard');
+    $game->cards->pickItem('deck', 'discard');
+    $game->cards->pickItem('deck', 'discard');
+    $game->cards->pickItem('deck', 'discard');
+    $game->cards->pickItem('deck', 'discard');
+    $game->cards->pickItem('deck', 'discard');
 
-    $game->debug("Discard pile now has cards: " . json_encode($game->getCardNames($game->cards->getCardsInLocation('discard'))));
+    $game->debug("Discard pile now has cards: " . json_encode($game->getCardNames($game->cards->getItemsInLocation('discard'))));
 
-    while ($game->isSpecial($game->cards->getCardOnTop('discard'))) {
-      $game->cards->pickCardForLocation('deck', 'discard');
+    while ($game->isSpecial($game->cards->getItemOnTop('discard'))) {
+      $game->cards->pickItemForLocation('deck', 'discard');
     }
 
     $first_player = (int) $this->game->getActivePlayerId();

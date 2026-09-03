@@ -6,7 +6,7 @@ namespace Bga\Games\makaucloudnein;
 
 use Bga\Games\makaucloudnein\States\NewHand;
 use Bga\GameFramework\Components\Counters\PlayerCounter;
-use Bga\GameFramework\Components\Decks\DeckFactory;
+use Bga\Games\makaucloudnein\CardManager;
 
 class Game extends \Bga\GameFramework\Table
 {
@@ -18,7 +18,7 @@ class Game extends \Bga\GameFramework\Table
     {
         parent::__construct();
 
-        $this->cards = $this->deckFactory->createDeck('card'); // 'card' is the name of the database
+        $this->cardManager = new CardManager($this);
 
         $this->card_types = [
             "suits" => [
@@ -73,9 +73,9 @@ class Game extends \Bga\GameFramework\Table
             "SELECT `player_id` AS `id`, `player_score` AS `score` FROM `player`"
         );
 
-        $result['deck'] = $this->cards->countCardsInLocation('deck');
-        $result['hand'] = $this->cards->getCardsInLocation('hand', $currentPlayerId);
-        $result['discard'] = $this->cards->getCardsInLocation('discard');
+        $result['deck'] = $this->cardManager->countCardsInLocation('deck');
+        $result['hand'] = $this->cardManager->getCardsInLocation('hand', $currentPlayerId);
+        $result['discard'] = $this->cardManager->getCardsInLocation('discard');
         $result['skipcount'] = $this->skipcount;
         $result['drawcount'] = $this->drawcount;
 
@@ -84,6 +84,10 @@ class Game extends \Bga\GameFramework\Table
 
     protected function setupNewGame($players, $options = [])
     {
+        $this->cardManager->initDb();
+        $this->cardManager->setup();
+        $this->cards = $this->cardManager->items;
+
         $gameinfos = $this->getGameinfos();
         $default_colors = $gameinfos['player_colors'];
 
@@ -106,18 +110,7 @@ class Game extends \Bga\GameFramework\Table
         $this->reattributeColorsBasedOnPreferences($players, $gameinfos["player_colors"]);
         $this->reloadPlayersBasicInfos();
 
-        // Init global values with their initial values.
 
-        $cards = [];
-        foreach ($this->card_types["suits"] as $suit => $suit_info) {
-            // spade, heart, diamond, club
-            foreach ($this->card_types["types"] as $value => $info_value) {
-                //  2, 3, 4, ... K, A
-                $cards[] = ['type' => $suit, 'type_arg' => $value, 'nbr' => 1];
-            }
-        }
-
-        $this->cards->createCards($cards, 'deck');
         $this->skipcount = 0;
         $this->drawcount = 0;
 
@@ -149,27 +142,27 @@ class Game extends \Bga\GameFramework\Table
     Here, put a card you want to test in your hand (assuming you use the Deck component).
 
     public function debug_setCardInHand(int $cardType, int $playerId) {
-        $card = array_values($this->cards->getCardsOfType($cardType))[0];
-        $this->cards->moveCard($card['id'], 'hand', $playerId);
+        $card = array_values($this->cardManager->getCardsOfType($cardType))[0];
+        $this->cardManager->moveCard($card['id'], 'hand', $playerId);
     }
     */
     function getCardName($card): string
     {
         return $this->card_types['types'][$card['type_arg']]['name'] . ' of ' . $this->card_types['suits'][$card['type']]['name'];
-    }    
+    }
 
-    function getCardNames($cards): array
+    function getCardNames($cardManager): array
     {
         $names = [];
-        foreach ($cards as $card) {
+        foreach ($cardManager as $card) {
             $names[] = $this->getCardName($card);
         }
         return $names;
     }
-    
+
     function getPlayableCards($player_id): array
     {
-        $hand = $this->cards->getPlayerHand($player_id);
+        $hand = $this->cardManager->getPlayerHand($player_id);
         $playable_card_ids = [];
         $all_ids = array_keys($hand);
 

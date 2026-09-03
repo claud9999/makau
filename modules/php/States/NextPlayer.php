@@ -21,7 +21,7 @@ class NextPlayer extends GameState
   {
     $game = $this->game;
 
-    if ($game->cards->countCardInLocation('hand') == 0) {
+    if ($game->cards->countItemsInLocation('hand') == 0) {
       return EndHand::class;
     }
     
