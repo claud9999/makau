@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Bga\Games\makaucloudnein;
 
-use Bga\Games\makaucloudnein\States\NewHand;
+use Bga\Games\makaucloudnein\States\GameOn;
 use Bga\GameFramework\Components\Counters\PlayerCounter;
 use Bga\Games\makaucloudnein\Cards\CardManager;
 
@@ -13,6 +13,7 @@ class Game extends \Bga\GameFramework\Table
     public array $card_types;
     public int $skipcount;
     public int $drawcount;
+    public int $activePlayerId;
 
     public function __construct()
     {
@@ -117,9 +118,7 @@ class Game extends \Bga\GameFramework\Table
         $this->skipcount = 0;
         $this->drawcount = 0;
 
-        $this->activeNextPlayer();
-
-        return NewHand::class;
+        return GameOn::class;
     }
 
     function getCardName($card): string

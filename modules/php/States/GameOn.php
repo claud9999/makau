@@ -13,24 +13,26 @@ use Bga\GameFramework\Actions\Types\IntArrayParam;
 use Bga\GameFramework\NotificationMessage;
 
 
-class PlayerTurn extends GameState
+class GameOn extends GameState
 {
     public function __construct(protected Game $game)
     {
         parent::__construct(
             $game,
-            id: 31,
-            type: StateType::ACTIVE_PLAYER, // This state type means that one player is active and can do actions
-            description: clienttranslate('${actplayer} must play a card'), // We tell OTHER players what they are waiting for
-            descriptionMyTurn: clienttranslate('${you} must play a card'), // We tell the ACTIVE player what they must do
-            // We suround the code with clienttranslate() so that the text is sent to the client for translation (this will enable the game to support other languages)
+            id: 2,
+            type: StateType::MULTIPLE_ACTIVE_PLAYER,
+            descriptionMyTurn: clienttranslate('${you} may play cards or draw'),
         );
+    }
+
+    function onEnteringState(int $activePlayerId) {
+        $this->gamestate->setAllPlayersMultiactive();
     }
 
     #[PossibleAction]
     public function actPass(int $activePlayerId)
     {
-        return NextPlayer::class;
+        return;
     }
 
     #[PossibleAction]
@@ -116,7 +118,7 @@ class PlayerTurn extends GameState
 
         $game->debug("Discard pile now has cards: " . json_encode($game->getCardNames($game->cards->getItemsInLocation('discard'))));
 
-        return NextPlayer::class;
+        return;
     }
 
     public function zombie(int $playerId)

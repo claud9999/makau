@@ -1,7 +1,7 @@
 const BgaAnimations = await importEsmLib('bga-animations', '1.x');
 const BgaCards = await importEsmLib('bga-cards', '1.x');
 
-class PlayerTurn {
+class GameOn {
     constructor(game, bga) {
         this.game = game;
         this.bga = bga;
@@ -49,8 +49,8 @@ export class Game {
         console.log('makaucloudnein constructor');
         this.bga = bga;
 
-        this.playerTurn = new PlayerTurn(this, bga);
-        this.bga.states.register('PlayerTurn', this.playerTurn);
+        this.GameOn = new GameOn(this, bga);
+        this.bga.states.register('GameOn', this.GameOn);
 
         this.bga.states.logger = console.log;
         this.playButton = null;
@@ -129,7 +129,7 @@ export class Game {
         this.discard.addCards(Array.from(Object.values(this.gamedatas.discard)));
 
         this.hand.onCardClick = (card) => {
-            if (this.gamedatas.gamestate.name != "PlayerTurn") this.hand.unselectAll();
+            if (this.gamedatas.gamestate.name != "GameOn") this.hand.unselectAll();
         };
         // Setup game notifications to handle (see "setupNotifications" method below)
         this.setupNotifications();
