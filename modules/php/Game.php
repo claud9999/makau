@@ -4,16 +4,13 @@ declare(strict_types=1);
 
 namespace Bga\Games\makaucloudnein;
 
-use Bga\Games\makaucloudnein\States\GameOn;
+use Bga\Games\makaucloudnein\States\NewHand;
 use Bga\GameFramework\Components\Counters\PlayerCounter;
 use Bga\Games\makaucloudnein\Cards\CardManager;
 
 class Game extends \Bga\GameFramework\Table
 {
     public array $card_types;
-    public int $skipcount;
-    public int $drawcount;
-    public int $activePlayerId;
 
     public function __construct()
     {
@@ -53,35 +50,22 @@ class Game extends \Bga\GameFramework\Table
                 14 => ['name' => clienttranslate('A')]
             ]
         ];
-        
-        $this->skipcount = 0;
-        $this->drawcount = 0;
     }
-
-    public function getGameProgression()
-    {
-        return 0;
-    }
-
-    public function upgradeTableDb($from_version) {}
 
     protected function getAllDatas(int $currentPlayerId): array
     {
         $cards = $this->cards;
         $result = [];
-        // WARNING: We must only return information visible by the current player (using $currentPlayerId).
 
-        // Get information about players.
-        // NOTE: you can retrieve some extra field you added for "player" table in `dbmodel.sql` if you need it.
         $result["players"] = $this->getCollectionFromDb(
-            "SELECT `player_id` AS `id`, `player_score` AS `score` FROM `player`"
+            "SELECT `player_id` AS `id` FROM `player`"
         );
-
         $result['deck'] = $cards->countItemsInLocation('deck');
         $result['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
         $result['discard'] = $cards->getItemsInLocation('discard');
-        $result['skipcount'] = $this->skipcount;
-        $result['drawcount'] = $this->drawcount;
+        $result['skipcount'] = $this->bga->globals->get('SkipCount');
+        $result['drawcount'] = $this->bga->globals->get('DrawCount');
+        $result['active'] = $this->bga->globals->get('ActivePlayer');
 
         return $result;
     }
@@ -92,6 +76,10 @@ class Game extends \Bga\GameFramework\Table
         $this->cardManager->setup();
         $this->cards = $this->cardManager->cards;
 
+        $this->bga->globals->set('ActivePlayer', 1);
+        $this->bga->globals->set('SkipCount', 0);
+        $this->bga->globals->set('DrawCount', 0);
+
         $gameinfos = $this->getGameinfos();
         $default_colors = $gameinfos['player_colors'];
 
@@ -100,7 +88,7 @@ class Game extends \Bga\GameFramework\Table
             $query_values[] = vsprintf("(%s, '%s', '%s')", [
                 $player_id,
                 array_shift($default_colors),
-                addslashes($player["player_name"]),
+                addslashes($player["player_name"])
             ]);
         }
 
@@ -114,25 +102,7 @@ class Game extends \Bga\GameFramework\Table
         $this->reattributeColorsBasedOnPreferences($players, $gameinfos["player_colors"]);
         $this->reloadPlayersBasicInfos();
 
-
-        $this->skipcount = 0;
-        $this->drawcount = 0;
-
-        return GameOn::class;
-    }
-
-    function getCardName($card): string
-    {
-        return $this->card_types['suits'][$card->suit]['name'] . ' of ' . $this->card_types['ranks'][$card->rank]['name'];
-    }
-
-    function getCardNames($cards): array
-    {
-        $names = [];
-        foreach ($cards as $card) {
-            $names[] = $this->getCardName($card);
-        }
-        return $names;
+        return NewHand::class;
     }
 
     function getPlayableCards($player_id): array

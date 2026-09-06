@@ -7,36 +7,14 @@ class GameOn {
         this.bga = bga;
     }
 
-    getRankMatches(cardToMatch, cards) {
-        let matchcards = [];
-        for (let i = 0; i < cards.length; i++) {
-            let card = cards[i];
-            if (card.type_arg == cardToMatch.type_arg) {
-                matchcards.push(card);
-            }
-        }
-        return matchcards;
-    }
-
     onEnteringState(_args, isCurrentPlayerActive) {
-        this.game.hand.setSelectionMode('none', []);
-
         this.game.playButton = this.bga.statusBar.addActionButton(_('Play'), () =>
             this.bga.actions.performAction('actPlay', { cards: this.game.hand.selectedCards.map((card) => card.id) }));
-
         this.game.drawButton = this.bga.statusBar.addActionButton(_('Draw'), () => this.bga.actions.performAction('actDraw'));
+        this.game.passButton = this.bga.statusBar.addActionButton(_('Pass'), () => this.bga.actions.performAction('actPass'));
+        this.game.makauButton = this.bga.statusBar.addActionButton(_('Makau'), () => this.bga.actions.performAction('actMakau'));
 
-        this.game.skipButton = this.bga.statusBar.addActionButton(_('Skip'), () => this.bga.actions.performAction('actSkip'));
-
-        if (isCurrentPlayerActive) this.game.setPlayOptions();
-        else {
-            this.game.playButton.disabled = true;
-            this.game.drawButton.disabled = true;
-            this.game.skipButton.disabled = true;
-
-            this.game.hand.setSelectionMode('none');
-            this.bga.statusBar.setTitle(_('It is ${actplayer}\'s turn'));
-        }
+        this.game.setPlayOptions();
     }
 
     onLeavingState(args, isCurrentPlayerActive) { }
@@ -44,23 +22,38 @@ class GameOn {
     onPlayerActivationChange(args, isCurrentPlayerActive) { }
 }
 
+class NewHand {
+    constructor(game, bga) {
+        this.game = game;
+        this.bga = bga;
+    }
+
+    onEnteringState(_args, isCurrentPlayerActive) {
+    }
+
+    onLeavingState(args, isCurrentPlayerActive) { }
+
+    onPlayerActivationChange(args, isCurrentPlayerActive) { }
+}
+
+
 export class Game {
     constructor(bga) {
         console.log('makaucloudnein constructor');
         this.bga = bga;
 
         this.GameOn = new GameOn(this, bga);
-        this.bga.states.register('GameOn', this.GameOn);
+        this.bga.states.register('NewHand', new NewHand(this, bga));
+        this.bga.states.register('GameOn', new GameOn(this, bga));
 
         this.bga.states.logger = console.log;
-        this.playButton = null;
-        this.drawButton = null;
-        this.skipButton = null;
     }
 
     setup(gamedatas) {
         console.log("Starting game setup");
-        this.gamedatas = gamedatas;
+        this.active = gamedatas.active;
+        this.skipCount = gamedatas.skipcount;
+        this.drawCount = gamedatas.drawcount;
 
         this.bga.gameArea.getElement().insertAdjacentHTML(
             "beforeend",
@@ -73,13 +66,12 @@ export class Game {
                         <b id="hand_label">${_("My hand")}</b>
                         <div id="hand"></div>
                     </div>
-
-            `,
+            `
         );
 
         // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
         this.animationManager = new BgaAnimations.Manager({
-            animationsActive: () => this.bga.gameui.bgaAnimationsActive(),
+            animationsActive: () => this.bga.gameui.bgaAnimationsActive()
         });
 
         const cardWidth = 100;
@@ -104,42 +96,38 @@ export class Game {
                 div.style.backgroundPositionX = `100%`;
                 div.style.backgroundPositionY = `0%`;
             },
-            isCardVisible: (card) => { return card.rank > 0; },
+            isCardVisible: (card) => { return card.rank > 0; }
         });
 
         this.deck = new BgaCards.Deck(this.cardsManager, document.getElementById('deck'), {
-            cardNumber: this.gamedatas.deck,
+            cardNumber: gamedatas.deck,
             counter: {
                 position: 'center',
-                extraClasses: 'text-shadow',
-            },
+                extraClasses: 'text-shadow'
+            }
         });
 
         this.hand = new BgaCards.HandStock(
             this.cardsManager,
             document.getElementById("hand")
         );
+        this.hand.addCards(gamedatas.hand);
 
         this.discard = new BgaCards.LineStock(
             this.cardsManager,
             document.getElementById("discard")
         );
-
-        this.hand.addCards(Array.from(Object.values(this.gamedatas.hand)));
-        this.discard.addCards(Array.from(Object.values(this.gamedatas.discard)));
+        this.discard.addCards(gamedatas.discard);
 
         this.hand.onCardClick = (card) => {
-            if (this.gamedatas.gamestate.name != "GameOn") this.hand.unselectAll();
+            if (gamedatas.gamestate.name != "GameOn") this.hand.unselectAll();
         };
+
         // Setup game notifications to handle (see "setupNotifications" method below)
         this.setupNotifications();
 
-        this.skipcount = this.gamedatas.skipcount;
-        this.drawcount = this.gamedatas.drawcount;
-
         console.log("Ending game setup");
     }
-
 
     canPlay(selectableCards) {
         this.bga.statusBar.setTitle(_('It\'s your turn...'));
@@ -150,47 +138,70 @@ export class Game {
         this.hand.setSelectionMode('multiple', selectableCards);
     }
 
+    getPlayableCards(cardToMatch, cards) {
+        let matchingCards = [];
+        for (let i = 0; i < cards.length; i++) {
+            let card = cards[i];
+            if (card.type_arg == cardToMatch.type_arg) {
+                matchingCards.push(card);
+            }
+        }
+
+        return matchingCards;
+    }
+
     setPlayOptions() {
         let handCards = this.hand.getCards();
         let discards = this.discard.getCards();
         let topDiscard = discards[discards.length - 1];
 
-        this.skipButton.disabled = true;
+        this.passButton.disabled = true;
         this.playButton.disabled = true;
         this.drawButton.disabled = true;
+        this.makauButton.disabled = false;
 
-        if (this.skipcount > 0) {
-            let selectablecards = this.getRankMatches(topDiscard, handCards);
+        if (this.bga.players.getCurrentPlayerNo() == this.active) {
+            let selectableCards = [];
+            if (this.skipCount > 0) {
+                selectableCards = this.getPlayableCards(topDiscard, handCards);
 
-            if (selectablecards.length < 1) {
-                this.bga.statusBar.setTitle(_('You have no playable cards and must skip your turn'));
-                this.skipButton.disabled = false;
+                if (selectableCards.length < 1) {
+                    this.bga.statusBar.setTitle(_('You must skip your turn'));
+                    this.hand.setSelectionMode('none');
+                    this.passButton.disabled = false;
+                } else {
+                    this.canPlay(selectableCards);
+                }
+            } else if (this.drawCount > 0) {
+                selectableCards = this.getPlayableCards(topDiscard, handCards);
+
+                if (selectableCards.length < 1) {
+                    this.bga.statusBar.setTitle(_('You must draw a card'));
+                    this.hand.setSelectionMode('none');
+                    this.drawButton.disabled = false;
+                } else {
+                    this.canPlay(selectableCards);
+                }
             } else {
-                this.canPlay(selectablecards);
-            }
-        } else if (this.drawcount > 0) {
-            let selectablecards = this.getRankMatches(topDiscard, handCards);
-
-            if (selectablecards.length < 1) {
-                this.bga.statusBar.setTitle(_('You have no playable cards and must draw a card'));
-                this.drawButton.disabled = false;
-            } else {
-                this.canPlay(selectablecards);
-            }
-        } else {
-            let selectablecards = [];
-            for (let i = 0; i < handCards.length; i++) {
-                let card = handCards[i];
-                if (card.suit == topDiscard.suit || card.rank == topDiscard.rank || card.rank == 12 || topDiscard.rank == 12) {
-                    selectablecards.push(card);
+                for (let i = 0; i < handCards.length; i++) {
+                    let card = handCards[i];
+                    if (card.suit == topDiscard.suit || card.rank == topDiscard.rank || card.rank == 12 || topDiscard.rank == 12) {
+                        selectableCards.push(card);
+                    }
+                }
+                if (selectableCards.length < 1) {
+                    this.bga.statusBar.setTitle(_('You have no playable cards'));
+                    this.hand.setSelectionMode('none');
+                } else {
+                    this.canPlay(selectableCards);
                 }
             }
-            if (selectablecards.length < 1) {
-                this.bga.statusBar.setTitle(_('You have no playable cards'));
-                this.drawButton.disabled = false;
-            } else {
-                this.canPlay(selectablecards);
-            }
+        } else {
+            this.hand.setSelectionMode('none');
+
+            this.bga.statusBar.setTitle(_("${active} is playing now."), {
+                "active": this.bga.players.getPlayerByNo(this.active).name,
+            });
         }
     }
 
@@ -202,24 +213,34 @@ export class Game {
         });
     }
 
-    async notif_newHand(args) {
+    async notif_NewHand(args) {
         // We received a new full hand of cards.
         await this.hand.removeAll();
         await this.hand.addCards(Array.from(Object.values(args.hand)));
+        await this.discard.addCards(Array.from(Object.values(args.discard)));
+        this.active = args.active;
+        this.skipCount = 0;
+        this.drawCount = 0;
+        this.deck.setCardNumber(args.deck);
+
+        this.setPlayOptions();
     }
 
-    async notif_drawCard(args) {
+    async notif_DrawCard(args) {
         if (args._private) {
             await this.hand.addCard(args._private.card);
-            this.setPlayOptions();
         }
     }
 
-    async notif_playCard(args) {
-        this.discard.addCards([args.card]);
+    async notif_NextPlayer(args) {
+        this.active = args.active;
     }
 
-    async notif_invalidPlay(args) {
+    async notif_PlayCards(args) {
+        this.discard.addCards(Array.from(Object.values(args.cards)));
+    }
+
+    async notif_InvalidPlay(args) {
         this.hand.unselectAll();
     }
 }

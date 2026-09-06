@@ -19,33 +19,40 @@ class GameOn extends GameState
     {
         parent::__construct(
             $game,
-            id: 2,
+            id: 31,
             type: StateType::MULTIPLE_ACTIVE_PLAYER,
-            descriptionMyTurn: clienttranslate('${you} may play cards or draw'),
+            descriptionMyTurn: clienttranslate('${you} may play cards or draw')
         );
     }
 
-    function onEnteringState(int $activePlayerId) {
-        $this->gamestate->setAllPlayersMultiactive();
+    function onEnteringState() {}
+
+    #[PossibleAction]
+    public function actPass(int $currentPlayerId)
+    {
+        if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('ActivePlayer'))
+            return null;
+
+        return NextPlayer::class;
     }
 
     #[PossibleAction]
-    public function actPass(int $activePlayerId)
+    public function actDraw(int $currentPlayerId)
     {
-        return;
-    }
+        if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('ActivePlayer'))
+            return null;
 
-    #[PossibleAction]
-    public function actDraw(int $activePlayerId)
-    {
+        if ($this->bga->globals->get('Drew')) return;
+        $this->bga->globals->set('Drew', 1);
+
         $game = $this->game;
-        $card = $game->cards->pickItem('deck', ['hand', $activePlayerId]);
+        $card = $game->cards->pickItem('deck', ['hand', $currentPlayerId]);
 
-        $game->notify->all('drawCard', clienttranslate('${player_name} takes a card from the deck'), [
-            'playerId' => $activePlayerId,
-            'player_name' => $game->getPlayerNameById($activePlayerId),
+        $game->notify->all('DrawCard', clienttranslate('${player_name} takes a card from the deck'), [
+            'playerId' => $currentPlayerId,
+            'player_name' => $game->getPlayerNameById($currentPlayerId),
             '_private' => [
-                $activePlayerId => new NotificationMessage(clienttranslate('You take ${_private.rank} of ${_private.suit} from the deck'), [
+                $currentPlayerId => new NotificationMessage(clienttranslate('You take ${_private.rank} of ${_private.suit} from the deck'), [
                     'rank' => $game->card_types['ranks'][$card->rank]['name'],
                     'suit' => $game->card_types['suits'][$card->suit]['name'],
                     'card' => $card,
@@ -53,18 +60,21 @@ class GameOn extends GameState
                 ])
             ]
         ]);
-        return;
+
+        return null;
     }
 
     #[PossibleAction]
-    public function actPlay(#[IntArrayParam()] array $cards, int $activePlayerId)
+    public function actPlay(#[IntArrayParam()] array $cards, int $currentPlayerId)
     {
+        if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('ActivePlayer'))
+            return null;
+
         $game = $this->game;
-        $game->debug("Player $activePlayerId plays cards: " . implode(', ', $cards));
+        $game->debug("Player $currentPlayerId plays cards: " . implode(', ', $cards));
         $discards = $game->cards->getItemsInLocation('discard');
         $top = $game->cards->getItemOnTop('discard');
-
-        $game->debug("Discard pile now has cards: " . json_encode($game->getCardNames($discards)));
+        $playedCards = [];
 
         // check all the cards to make sure they can be played in sequence
         for ($i = 0; $i < count($cards); $i++) {
@@ -79,8 +89,8 @@ class GameOn extends GameState
                 $top = $currentCard;
             } else {
                 $game->notify->player(
-                    $activePlayerId,
-                    "invalidPlay",
+                    $currentPlayerId,
+                    "InvalidPlay",
                     clienttranslate('You cannot play a ${card_rank} of ${card_suit} on a ${top_rank} of ${top_suit}'),
                     [
                         'i18n' => array('top_rank', 'top_suit', 'card_rank', 'card_suit'),
@@ -94,31 +104,20 @@ class GameOn extends GameState
                 );
                 return null; // Stop the action if the play is invalid
             }
+            $playedCards[] = $currentCard;
         }
 
         // valid play, move the cards to the discard pile
-        for ($i = 0; $i < count($cards); $i++) {
-            $cardId = $cards[$i];
-            $currentCard = $game->cards->getItemById($cardId);
+        $game->cards->moveItems($cards, 'discard');
+        $game->notify->all(
+            'PlayCards',
+            '',
+            [
+                'cards' => $playedCards
+            ]
+        );
 
-            $game->cards->moveItem($cardId, 'discard');
-            $game->notify->all(
-                'playCard',
-                clienttranslate('${player_name} plays ${rank} of ${suit}'),
-                [
-                    'i18n' => array('suit', 'rank'),
-                    'card' => $currentCard,
-                    'player_id' => $activePlayerId,
-                    'player_name' => $game->getPlayerNameById($activePlayerId),
-                    'rank' => $game->card_types['ranks'][$currentCard->rank]['name'],
-                    'suit' => $game->card_types['suits'][$currentCard->suit]['name']
-                ]
-            );
-        }
-
-        $game->debug("Discard pile now has cards: " . json_encode($game->getCardNames($game->cards->getItemsInLocation('discard'))));
-
-        return;
+        return NextPlayer::class;
     }
 
     public function zombie(int $playerId)
