@@ -63,9 +63,11 @@ class Game extends \Bga\GameFramework\Table
         $result['deck'] = $cards->countItemsInLocation('deck');
         $result['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
         $result['discard'] = $cards->getItemsInLocation('discard');
-        $result['skipcount'] = $this->bga->globals->get('SkipCount');
-        $result['drawcount'] = $this->bga->globals->get('DrawCount');
-        $result['active'] = $this->bga->globals->get('ActivePlayer');
+        $result['skip_count'] = $this->bga->globals->get('skip_count');
+        $result['draw_count'] = $this->bga->globals->get('draw_count');
+        $result['active_player_no'] = $this->bga->globals->get('active_player_no');
+        $result['drew'] = $this->bga->globals->get('drew');
+
 
         return $result;
     }
@@ -76,9 +78,10 @@ class Game extends \Bga\GameFramework\Table
         $this->cardManager->setup();
         $this->cards = $this->cardManager->cards;
 
-        $this->bga->globals->set('ActivePlayer', 1);
-        $this->bga->globals->set('SkipCount', 0);
-        $this->bga->globals->set('DrawCount', 0);
+        $this->bga->globals->set('active_player_no', 1);
+        $this->bga->globals->set('skip_count', 0);
+        $this->bga->globals->set('draw_count', 0);
+        $this->bga->globals->set('drew', 0);
 
         $gameinfos = $this->getGameinfos();
         $default_colors = $gameinfos['player_colors'];

@@ -26,18 +26,21 @@ class NextPlayer extends GameState
         );
     }
 
-    function onEnteringState() {
-        $active = $this->bga->globals->get('ActivePlayer');
-        $active++;
-        if ($active > $this->game->getPlayerCount()) $active = 1;
-        $this->bga->globals->set('ActivePlayer', $active);
-        $this->bga->globals->set('Drew', 0);
+    function onEnteringState()
+    {  
+        $player_count = $this->game->getPlayerCount();
+        $active_player_no = $this->bga->globals->get('active_player_no');
+        $active_player_no++;
+        if ($active_player_no > $this->game->getPlayerCount()) $active_player_no = 1;
+
+        $this->bga->globals->set('active_player_no', $active_player_no);
+        $this->bga->globals->set('drew', 0);
 
 
         $this->game->bga->notify->all('NextPlayer', '', [
-                'active' => $active
+            'active_player_no' => $active_player_no
         ]);
-    
+
         return GameOn::class;
     }
 

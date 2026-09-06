@@ -33,8 +33,10 @@ class NewHand extends GameState
 
         $this->gamestate->setAllPlayersMultiactive();
 
-        $this->bga->globals->set('SkipCount', 0);
-        $this->bga->globals->set('DrawCount', 0);
+        $this->bga->globals->set('active_player_no', 1);
+        $this->bga->globals->set('skip_count', 0);
+        $this->bga->globals->set('draw_count', 0);
+        $this->bga->globals->set('drew', 0);
 
         $cards->moveAllItemsInLocation(null, 'deck');
         $cards->shuffle('deck');
@@ -46,7 +48,7 @@ class NewHand extends GameState
                 'deck' => $cards->countItemsInLocation('deck'),
                 'hand' => $hand,
                 'discard' => $discard,
-                'active' => 1
+                'active_player_no' => 1
             ]);
         }
         return NextPlayer::class;
