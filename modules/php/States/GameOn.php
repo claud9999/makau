@@ -43,20 +43,21 @@ class GameOn extends GameState
             return null;
 
 
-        if ($this->bga->globals->get('drew')) return;
+        if ($this->bga->globals->get('drew')) return; // can only draw once
         $this->bga->globals->set('drew', 1);
 
+        $nextplayer = false;
         $draw_count = $this->bga->globals->get('draw_count');
         if ($draw_count == 0) $draw_count = 1;
-        $this->game->debug("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ Player $currentPlayerId draws $draw_count cards.");
+        else $nextplayer = true;
 
         $cards = $this->game->cards->pickItems($draw_count, 'deck', ['hand', $currentPlayerId])->values();
-        $this->game->debug("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ Player $currentPlayerId drew cards: " . json_encode($cards));
+
         $this->bga->globals->set('draw_count', 0);
 
         $this->game->notify->all(
             'DrawCards',
-            clienttranslate('${player_name} takes a card from the deck'),
+            clienttranslate('${player_name} takes card(s) from the deck'),
             [
                 'player_name' => $this->game->getPlayerNameById($currentPlayerId),
                 '_private' => [
@@ -67,55 +68,47 @@ class GameOn extends GameState
             ]
         );
 
+        if ($nextplayer) return NextPlayer::class; // when forced to draw, I am done
         return null;
     }
 
     #[PossibleAction]
-    public function actPlay(#[IntArrayParam()] array $cards, int $currentPlayerId)
+    public function actPlay(#[IntArrayParam()] array $cardIds, int $currentPlayerId)
     {
         if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('active_player_no'))
             return null;
+
+        $this->game->debug("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ Player $currentPlayerId cardIds " . json_encode($cardIds));
 
         $discards = $this->game->cards->getItemsInLocation('discard');
         $top = $this->game->cards->getItemOnTop('discard');
         $playedCards = [];
 
-        // check all the cards to make sure they can be played in sequence
-        for ($i = 0; $i < count($cards); $i++) {
-            $cardId = $cards[$i];
-            $card = $this->game->cards->getItemById($cardId);
-            if (
-                $card->suit == $top->suit
-                || $card->rank == $top->rank
-                || $top->rank == 12 // queen
-                || $card->rank == 12 // queen
-            ) {
-                $top = $card;
-            } else {
-                $this->game->notify->player(
-                    $currentPlayerId,
-                    "InvalidPlay",
-                    clienttranslate('You cannot play a ${card_rank} of ${card_suit} on a ${top_rank} of ${top_suit}'),
-                    [
-                        'i18n' => array('top_rank', 'top_suit', 'card_rank', 'card_suit'),
-                        'top' => $top,
-                        'card' => $card,
-                        'top_rank' => $game->card_types['ranks'][$top->rank]['name'],
-                        'top_suit' => $game->card_types['suits'][$top->suit]['name'],
-                        'card_rank' => $game->card_types['ranks'][$card->rank]['name'],
-                        'card_suit' => $game->card_types['suits'][$card->suit]['name']
-                    ]
-                );
-                return null; // Stop the action if the play is invalid
-            }
-            $playedCards[] = $card;
+        $this->game->debug("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ top " . json_encode($top) . "discards " . json_encode($discards));
+
+        $cards = $this->game->cards->getItemsByIds($cardIds)->values();
+        $playableCards = $this->game->getPlayableCards($top, $cards);
+
+        $this->game->debug("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ cards " . json_encode($cards) . "playableCards " . json_encode($playableCards));
+
+        if (count($playableCards) < count($cards)) {
+            $this->game->notify->player(
+                $currentPlayerId,
+                'InvalidPlay',
+                'You cannot play ' . $this->game->getCardName($cards[count($playableCards)]),
+                []
+            );
+            return null;
         }
 
         $skip_count = $this->bga->globals->get('skip_count');
         $draw_count = $this->bga->globals->get('draw_count');
+        $suit_demand = $this->bga->globals->get('suit_demand');
+        $rank_demand = $this->bga->globals->get('rank_demand');
+        $last_jack = $this->bga->globals->get('last_jack');
 
         for ($i = 0; $i < count($cards); $i++) {
-            $card = $this->game->cards->getItemById($cards[$i]);
+            $card = $cards[$i];
             if ($card->rank == 2 || $card->rank == 3) {
                 $draw_count += $card->rank;
             }
@@ -125,7 +118,10 @@ class GameOn extends GameState
         }
 
         $this->bga->globals->set('skip_count', $skip_count);
-        $this->bga->globals->get('draw_count', $draw_count);
+        $this->bga->globals->set('draw_count', $draw_count);
+        $this->bga->globals->set('suit_demand', $suit_demand);
+        $this->bga->globals->set('rank_demand', $rank_demand);
+        $this->bga->globals->set('last_jack', $last_jack);
 
         // valid play, move the cards to the discard pile
         $this->game->cards->moveItems($cards, 'discard');
@@ -133,9 +129,12 @@ class GameOn extends GameState
             'PlayCards',
             '',
             [
-                'cards' => $playedCards,
+                'cards' => $cards,
                 'skip_count' => $skip_count,
-                'draw_count' => $draw_count
+                'draw_count' => $draw_count,
+                'suit_demand' => $suit_demand,
+                'rank_demand' => $rank_demand,
+                'last_jack' => $last_jack,
             ]
         );
 

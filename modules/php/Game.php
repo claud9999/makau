@@ -22,32 +22,33 @@ class Game extends \Bga\GameFramework\Table
         $this->card_types = [
             "suits" => [
                 1 => [
-                    'name' => clienttranslate('Spade'),
+                    'name' => clienttranslate('Spade')
                 ],
                 2 => [
-                    'name' => clienttranslate('Heart'),
+                    'name' => clienttranslate('Heart')
                 ],
                 3 => [
-                    'name' => clienttranslate('Club'),
+                    'name' => clienttranslate('Club')
                 ],
                 4 => [
-                    'name' => clienttranslate('Diamond'),
+                    'name' => clienttranslate('Diamond')
                 ]
             ],
             "ranks" => [
-                2 => ['name' => '2'],
-                3 => ['name' => '3'],
-                4 => ['name' => '4'],
-                5 => ['name' => '5'],
-                6 => ['name' => '6'],
-                7 => ['name' => '7'],
-                8 => ['name' => '8'],
-                9 => ['name' => '9'],
-                10 => ['name' => '10'],
-                11 => ['name' => clienttranslate('J')],
-                12 => ['name' => clienttranslate('Q')],
-                13 => ['name' => clienttranslate('K')],
-                14 => ['name' => clienttranslate('A')]
+                2 => ['name' => 'Two'],
+                3 => ['name' => 'Three'],
+                4 => ['name' => 'Four'],
+                5 => ['name' => 'Five'],
+                6 => ['name' => 'Six'],
+                7 => ['name' => 'Seven'],
+                8 => ['name' => 'Eight'],
+                9 => ['name' => 'Nine'],
+                10 => ['name' => 'Ten'],
+                11 => ['name' => clienttranslate('Jack')],
+                12 => ['name' => clienttranslate('Queen')],
+                13 => ['name' => clienttranslate('King')],
+                14 => ['name' => clienttranslate('Ace')],
+                15 => ['name' => clienttranslate('Joker')]
             ]
         ];
     }
@@ -65,6 +66,9 @@ class Game extends \Bga\GameFramework\Table
         $result['discard'] = $cards->getItemsInLocation('discard');
         $result['skip_count'] = $this->bga->globals->get('skip_count');
         $result['draw_count'] = $this->bga->globals->get('draw_count');
+        $result['suit_demand'] = $this->bga->globals->get('suit_demand');
+        $result['rank_demand'] = $this->bga->globals->get('rank_demand');
+        $result['last_jack'] = $this->bga->globals->get('last_jack');
         $result['active_player_no'] = $this->bga->globals->get('active_player_no');
         $result['drew'] = $this->bga->globals->get('drew');
 
@@ -78,10 +82,13 @@ class Game extends \Bga\GameFramework\Table
         $this->cardManager->setup();
         $this->cards = $this->cardManager->cards;
 
-        $this->bga->globals->set('active_player_no', 1);
+        $this->bga->globals->set('active_player_no', 0);
         $this->bga->globals->set('skip_count', 0);
         $this->bga->globals->set('draw_count', 0);
         $this->bga->globals->set('drew', 0);
+        $this->bga->globals->set('suit_demand', 0);
+        $this->bga->globals->set('rank_demand', 0);
+        $this->bga->globals->set('last_jack', 0);
 
         $gameinfos = $this->getGameinfos();
         $default_colors = $gameinfos['player_colors'];
@@ -108,21 +115,53 @@ class Game extends \Bga\GameFramework\Table
         return NewHand::class;
     }
 
-    function getPlayableCards($player_id): array
-    {
-        $hand = $this->cardManager->getPlayerHand($player_id);
-        $playable_card_ids = [];
-        $all_ids = array_keys($hand);
+    /* Logic:
+    If there is a "draw demand", the only cards the current player can play is another draw card.
+    If there is a "skip demand", the only cards the current player can play is another skip card.
+    If the previous card was an A and a suit was called, only that suit can be played. If "Free" was called, any non-action card.
+    If the a player played a J and a rank was called, only that rank can be played, or another J. If "Any" was called, any non-action card or another J.
+    If no skip and no draw demanded, play matching suit or rank or a wild card (A, Q).
 
-        foreach ($hand as $card) if ($card->rank != 2) $playable_card_ids[] = $card->id;
-        return $playable_card_ids;
+    Jokers, when played, are declared as to what kind of card they represent.
+
+    Should match getPlayableCards in Game.js
+    */
+    function getPlayableCards($cardToMatch, $cards): array
+    {
+        $matchingCards = [];
+        $top = $cardToMatch;
+        $this->debug("getPlayableCards ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ top " . json_encode($top));
+
+        for ($i = 0; $i < count($cards); $i++) {
+            $card = $cards[$i];
+        $this->debug("getPlayableCards ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ card " . json_encode($card));
+            if ($this->bga->globals->get('skip_count') > 0) {
+                if ($card->rank == 4)
+                    $matchingCards[] = $card;
+                $top = $card;
+            } else if ($this->bga->globals->get('draw_count') > 0) {
+                if (
+                    $card->rank == 2
+                    || $card->rank == 3
+                    || $card->rank == 13 // king
+                )
+                    $matchingCards[] = $card;
+                $top = $card;
+            } else {
+                if (
+                    $card->rank == 12 // queen
+                    || $card->suit == $top->suit
+                    || $card->rank == $top->rank
+                )
+                    $matchingCards[] = $card;
+                $top = $card;
+            }
+        }
+
+        return $matchingCards;
     }
 
-    public function isSpecial($card)
-    {
-        return $card->rank == 12 // queen
-            || $card->rank == 2 // draw 2
-            || $card->rank == 3 // draw 3
-        ;
+    function getCardName($card): string {
+        return ("The " . $this->card_types['ranks'][$card->rank]['name'] . " of " . $this->card_types['suits'][$card->suit]['name'] . "s");
     }
 }

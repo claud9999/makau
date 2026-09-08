@@ -9,7 +9,7 @@ class GameOn {
 
     onEnteringState(_args, isCurrentPlayerActive) {
         this.game.playButton = this.bga.statusBar.addActionButton(_('Play'), () =>
-            this.bga.actions.performAction('actPlay', { cards: this.game.hand.selectedCards.map((card) => card.id) }));
+            this.bga.actions.performAction('actPlay', { cardIds: this.game.hand.selectedCards.map((card) => card.id) }));
         this.game.drawButton = this.bga.statusBar.addActionButton(_('Draw'), () => this.bga.actions.performAction('actDraw'));
         this.game.passButton = this.bga.statusBar.addActionButton(_('Pass'), () => {
             this.bga.actions.performAction('actPass')
@@ -39,6 +39,29 @@ export class Game {
 
         this.bga.states.logger = console.log;
         this.drew = 0;
+        this.card_types = {
+            "suit": {
+                1: "Spade",
+                2: "Heart",
+                3: "Club",
+                4: "Diamond",
+            },
+            "rank": {
+                2: "Two",
+                3: "Three",
+                4: "Four",
+                5: "Five",
+                6: "Six",
+                7: "Seven",
+                8: "Eight",
+                9: "Nine",
+                10: "Ten",
+                11: "Jack",
+                12: "Queen",
+                13: "King",
+                14: "Joker"
+            },
+        }
     }
 
     setup(gamedatas) {
@@ -83,7 +106,7 @@ export class Game {
                 div.dataset.rank = card.rank; // value 2..14
                 div.style.backgroundPositionX = `calc(100% / 14 * (${card.rank} - 2))`; // 14 is number of columns in stock image minus 1
                 div.style.backgroundPositionY = `calc(100% / 3 * (${card.suit} - 1))`; // 3 is number of rows in stock image minus 1
-                this.bga.gameui.addTooltipHtml(div.id, `${card.rank} of ${card.suit}`);
+                this.bga.gameui.addTooltipHtml(div.id, `${this.card_types["rank"][card.rank]} of ${this.card_types["suit"][card.suit]}s`);
             },
             setupBackDiv: (card, div) => {
                 div.style.backgroundPositionX = `100%`;
@@ -106,9 +129,12 @@ export class Game {
         );
         this.hand.addCards(gamedatas.hand);
 
-        this.discard = new BgaCards.LineStock(
+        this.discard = new BgaCards.HandStock(
             this.cardsManager,
-            document.getElementById("discard")
+            document.getElementById("discard"),
+            {
+                fanShaped: false,
+            }
         );
         this.discard.addCards(gamedatas.discard);
 
@@ -122,6 +148,7 @@ export class Game {
         console.log("Ending game setup");
     }
 
+    // Should match getPlayableCards in Game.php
     getPlayableCards(cardToMatch, cards) {
         let matchingCards = [];
 

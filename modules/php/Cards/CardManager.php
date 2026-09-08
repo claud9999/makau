@@ -36,6 +36,16 @@ class CardManager
                 ];
             }
         }
+        $cards[] = [
+            'location' => 'deck',
+            'suit' => 0,
+            'rank' => 15
+        ];
+        $cards[] = [
+            'location' => 'deck',
+            'suit' => 0,
+            'rank' => 15
+        ];
         $this->cards->createItems($cards);
         $this->cards->shuffle('deck');
     }

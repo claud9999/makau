@@ -28,8 +28,7 @@ class NewHand extends GameState
 
     function onEnteringState()
     {
-        $game = $this->game;
-        $cards = $game->cards;
+        $cards = $this->game->cards;
 
         $this->gamestate->setAllPlayersMultiactive();
 
@@ -41,10 +40,13 @@ class NewHand extends GameState
         $cards->moveAllItemsInLocation(null, 'deck');
         $cards->shuffle('deck');
 
-        $discard = $game->cards->pickItems(1, 'deck', 'discard');
+        $discard = $this->game->cards->pickItem('deck', 'discard');
+        while ($discard->rank < 5 || $discard->rank > 10)
+            $discard = $this->game->cards->pickItem('deck', 'discard');
+
         foreach ($this->gamestate->getActivePlayerList() as $player_id) {
             $hand = $cards->pickItems(5, 'deck', ['hand', (int)$player_id]);
-            $game->bga->notify->player((int)$player_id, 'NewHand', '', [
+            $this->game->bga->notify->player((int)$player_id, 'NewHand', '', [
                 'deck' => $cards->countItemsInLocation('deck'),
                 'hand' => $hand,
                 'discard' => $discard,
