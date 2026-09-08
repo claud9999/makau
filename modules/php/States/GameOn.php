@@ -59,6 +59,7 @@ class GameOn extends GameState
             'DrawCards',
             clienttranslate('${player_name} takes card(s) from the deck'),
             [
+                'deck' => $this->game->cards->countItemsInLocation('deck'),
                 'player_name' => $this->game->getPlayerNameById($currentPlayerId),
                 '_private' => [
                     $currentPlayerId => [

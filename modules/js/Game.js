@@ -75,8 +75,11 @@ export class Game {
             "beforeend",
             `
                     <div id="table" class="table" height="200px">
-                    <div id="deck"></div>
+                    <div id="deck">
+                    <b id="deck_label">${_("Deck")}</b>
+                    </div>
                     <div id="discard" bgcolor="yellow"></div>
+                    <b id="discard_label">${_("Discard pile")}</b>
                     </div>
                     <div id="hand_wrap" class="whiteblock">
                         <b id="hand_label">${_("My hand")}</b>
@@ -84,6 +87,21 @@ export class Game {
                     </div>
             `
         );
+
+        for (let i = 0; i <= gamedatas.player_ids.length; i++) {
+            player_id = gamedatas.player_ids[i];
+            if (i == gamedatas.my_player_no) continue;
+
+            this.bga.gameArea.getElement().insertAdjacentHTML(
+                "beforeend",
+                `
+                    <div id="player_${i}_hand" class="whiteblock">
+                        <b id="player_${i}_hand_label">${this.bga.players.getPlayerByNo(i).name}'s hand</b>
+                        <div id="player_${i}_hand"></div>
+                    </div>
+                `
+            );
+        }
 
         // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
         this.animationManager = new BgaAnimations.Manager({
@@ -221,7 +239,7 @@ export class Game {
                 }
             } else {
                 this.drawButton.disabled = this.drew;
-                this.passButton.disabled = false;
+                this.passButton.disabled = !this.drew;
                 for (let i = 0; i < handCards.length; i++) {
                     let card = handCards[i];
                     if (card.suit == topDiscard.suit || card.rank == topDiscard.rank || card.rank == 12 || topDiscard.rank == 12) {
@@ -235,8 +253,7 @@ export class Game {
                     this.bga.statusBar.setTitle(_('It\'s your turn...'));
 
                     this.playButton.disabled = false;
-                    this.drawButton.disabled = this.drew;
-
+ 
                     this.hand.setSelectionMode('multiple', selectableCards);
                 }
             }
@@ -276,6 +293,8 @@ export class Game {
             await this.hand.addCards(args._private.cards);
         }
         this.drew = 1;
+        this.draw_count = 0;
+        this.deck.setCardNumber(args.deck);
         this.setPlayOptions();
     }
 

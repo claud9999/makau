@@ -58,9 +58,14 @@ class Game extends \Bga\GameFramework\Table
         $cards = $this->cards;
         $result = [];
 
-        $result["players"] = $this->getCollectionFromDb(
+        $result["player_ids"] = $this->getCollectionFromDb(
             "SELECT `player_id` AS `id` FROM `player`"
         );
+        for ($i = 0; $i < count($result["player_ids"]); $i++) {
+            if ($result["player_ids"][$i]["id"] == $currentPlayerId) {
+                $result['my_player_no'] = $i;
+            }
+        }
         $result['deck'] = $cards->countItemsInLocation('deck');
         $result['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
         $result['discards'] = $cards->getItemsInLocation('discard')->values();
