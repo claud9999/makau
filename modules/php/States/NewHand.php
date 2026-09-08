@@ -40,16 +40,19 @@ class NewHand extends GameState
         $cards->moveAllItemsInLocation(null, 'deck');
         $cards->shuffle('deck');
 
+        $this->game->cards->pickItems(10, 'deck', 'discard');
         $discard = $this->game->cards->pickItem('deck', 'discard');
         while ($discard->rank < 5 || $discard->rank > 10)
-            $discard = $this->game->cards->pickItem('deck', 'discard');
+            $this->game->cards->pickItem('deck', 'discard');
+
+        $discards = $cards->getItemsInLocation('discard')->values();
 
         foreach ($this->gamestate->getActivePlayerList() as $player_id) {
             $hand = $cards->pickItems(5, 'deck', ['hand', (int)$player_id]);
             $this->game->bga->notify->player((int)$player_id, 'NewHand', '', [
                 'deck' => $cards->countItemsInLocation('deck'),
                 'hand' => $hand,
-                'discard' => $discard,
+                'discards' => $discards,
                 'active_player_no' => 1
             ]);
         }

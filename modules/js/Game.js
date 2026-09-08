@@ -136,7 +136,8 @@ export class Game {
                 fanShaped: false,
             }
         );
-        this.discard.addCards(gamedatas.discard);
+
+        this.discard.addCards(gamedatas.discards);
 
         this.hand.onCardClick = (card) => {
             if (gamedatas.gamestate.name != "GameOn") this.hand.unselectAll();
@@ -149,7 +150,7 @@ export class Game {
     }
 
     // Should match getPlayableCards in Game.php
-    getPlayableCards(cardToMatch, cards) {
+    getPlayableCards(top, cards) {
         let matchingCards = [];
 
         for (let i = 0; i < cards.length; i++) {
@@ -160,12 +161,15 @@ export class Game {
             } else if (this.draw_count > 0) {
                 if (card.rank == 2
                     || card.rank == 3
-                    || card.rank == 13) // king
+                    || card.rank == 13 // king
+                )
                     matchingCards.push(card);
             } else {
                 if (card.rank == 12 // queen
                     || card.suit == cardToMatch.suit
-                    || card.rank == cardToMatch.rank)
+                    || card.rank == cardToMatch.rank
+                    || top.rank == 12 // queen
+                )
                     matchingCards.push(card);
             }
         }
@@ -257,7 +261,7 @@ export class Game {
         // We received a new full hand of cards.
         await this.hand.removeAll();
         await this.hand.addCards(Array.from(Object.values(args.hand)));
-        await this.discard.addCards(Array.from(Object.values(args.discard)));
+        await this.discard.addCards(Array.from(Object.values(args.discards)));
         this.active_player_no = args.active_player_no;
         this.skip_count = 0;
         this.draw_count = 0;

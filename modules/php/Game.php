@@ -63,7 +63,7 @@ class Game extends \Bga\GameFramework\Table
         );
         $result['deck'] = $cards->countItemsInLocation('deck');
         $result['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
-        $result['discard'] = $cards->getItemsInLocation('discard');
+        $result['discards'] = $cards->getItemsInLocation('discard')->values();
         $result['skip_count'] = $this->bga->globals->get('skip_count');
         $result['draw_count'] = $this->bga->globals->get('draw_count');
         $result['suit_demand'] = $this->bga->globals->get('suit_demand');
@@ -126,15 +126,12 @@ class Game extends \Bga\GameFramework\Table
 
     Should match getPlayableCards in Game.js
     */
-    function getPlayableCards($cardToMatch, $cards): array
+    function getPlayableCards($top, $cards): array
     {
         $matchingCards = [];
-        $top = $cardToMatch;
-        $this->debug("getPlayableCards ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ top " . json_encode($top));
 
         for ($i = 0; $i < count($cards); $i++) {
             $card = $cards[$i];
-        $this->debug("getPlayableCards ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ card " . json_encode($card));
             if ($this->bga->globals->get('skip_count') > 0) {
                 if ($card->rank == 4)
                     $matchingCards[] = $card;
@@ -152,6 +149,7 @@ class Game extends \Bga\GameFramework\Table
                     $card->rank == 12 // queen
                     || $card->suit == $top->suit
                     || $card->rank == $top->rank
+                    || $top->rank == 12 // queen
                 )
                     $matchingCards[] = $card;
                 $top = $card;
@@ -162,6 +160,10 @@ class Game extends \Bga\GameFramework\Table
     }
 
     function getCardName($card): string {
-        return ("The " . $this->card_types['ranks'][$card->rank]['name'] . " of " . $this->card_types['suits'][$card->suit]['name'] . "s");
+        return ('The ' . $this->card_types['ranks'][$card->rank]['name'] . " of " . $this->card_types['suits'][$card->suit]['name'] . 's');
+    }
+
+    function getCardNames($cards): string {
+        return implode(", ", array_map(fn($card) => $this->getCardName($card), $cards));
     }
 }

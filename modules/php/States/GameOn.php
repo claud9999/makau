@@ -78,18 +78,12 @@ class GameOn extends GameState
         if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('active_player_no'))
             return null;
 
-        $this->game->debug("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ Player $currentPlayerId cardIds " . json_encode($cardIds));
-
         $discards = $this->game->cards->getItemsInLocation('discard');
         $top = $this->game->cards->getItemOnTop('discard');
         $playedCards = [];
 
-        $this->game->debug("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ top " . json_encode($top) . "discards " . json_encode($discards));
-
         $cards = $this->game->cards->getItemsByIds($cardIds)->values();
         $playableCards = $this->game->getPlayableCards($top, $cards);
-
-        $this->game->debug("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ cards " . json_encode($cards) . "playableCards " . json_encode($playableCards));
 
         if (count($playableCards) < count($cards)) {
             $this->game->notify->player(
