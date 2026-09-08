@@ -40,7 +40,6 @@ class NewHand extends GameState
         $cards->moveAllItemsInLocation(null, 'deck');
         $cards->shuffle('deck');
 
-        $this->game->cards->pickItems(10, 'deck', 'discard');
         $discard = $this->game->cards->pickItem('deck', 'discard');
         while ($discard->rank < 5 || $discard->rank > 10)
             $this->game->cards->pickItem('deck', 'discard');
