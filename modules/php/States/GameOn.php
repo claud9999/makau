@@ -33,6 +33,14 @@ class GameOn extends GameState
         if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('active_player_no'))
             return null;
 
+        $this->bga->globals->set('skip_count', 0);
+        $this->game->notify->all(
+            'Pass',
+            clienttranslate('${player_name} passes'),
+            [
+                'player_name' => $this->game->getPlayerNameById($currentPlayerId),
+                'player_ids' => [$currentPlayerId],
+        );
         return NextPlayer::class;
     }
 
@@ -61,6 +69,8 @@ class GameOn extends GameState
             [
                 'deck' => $this->game->cards->countItemsInLocation('deck'),
                 'player_name' => $this->game->getPlayerNameById($currentPlayerId),
+                'player_ids' => [$currentPlayerId],
+                'player_' . $currentPlayerId . '_hand' => $this->game->cards->countItemsInLocation(['hand', $currentPlayerId]),
                 '_private' => [
                     $currentPlayerId => [
                         'cards' => $cards
@@ -130,6 +140,8 @@ class GameOn extends GameState
                 'suit_demand' => $suit_demand,
                 'rank_demand' => $rank_demand,
                 'last_jack' => $last_jack,
+                'player_ids' => [$currentPlayerId],
+                "player_{$currentPlayerId}_hand" => $this->game->cards->countItemsInLocation(['hand', $currentPlayerId]),
             ]
         );
 

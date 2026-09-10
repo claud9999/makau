@@ -64,44 +64,56 @@ export class Game {
         }
     }
 
-    setup(gamedatas) {
+    setup(args) {
         console.log("Starting game setup");
-        this.active_player_no = gamedatas.active_player_no;
-        this.skip_count = gamedatas.skip_count;
-        this.draw_count = gamedatas.draw_count;
-        this.drew = gamedatas.drew;
+        this.active_player_no = args.active_player_no;
+        this.skip_count = args.skip_count;
+        this.draw_count = args.draw_count;
+        this.drew = args.drew;
 
         this.bga.gameArea.getElement().insertAdjacentHTML(
             "beforeend",
             `
                     <div id="table" class="table" height="200px">
-                    <div id="deck">
-                    <b id="deck_label">${_("Deck")}</b>
-                    </div>
-                    <div id="discard" bgcolor="yellow"></div>
-                    <b id="discard_label">${_("Discard pile")}</b>
-                    </div>
-                    <div id="hand_wrap" class="whiteblock">
-                        <b id="hand_label">${_("My hand")}</b>
-                        <div id="hand"></div>
-                    </div>
+                        <div id="otherstuff">
+                            <div id="deck">
+                                <b id="deck_label">${_("Deck")}</b>
+                            </div>
+                            <div id="discard" bgcolor="yellow">
+                                <b id="discard_label">${_("Discard pile")}</b>
+                            </div>
+                        </div>
+                        <div id="otherplayers" class="player_blocks">
             `
         );
 
-        for (let i = 0; i <= gamedatas.player_ids.length; i++) {
-            player_id = gamedatas.player_ids[i];
-            if (i == gamedatas.my_player_no) continue;
+        for (let i = 0; i < args.player_ids.length; i++) {
+            let player_id = args.player_ids[i];
+            if (player_id == this.bga.players.getCurrentPlayerId()) continue;
 
             this.bga.gameArea.getElement().insertAdjacentHTML(
                 "beforeend",
                 `
-                    <div id="player_${i}_hand" class="whiteblock">
-                        <b id="player_${i}_hand_label">${this.bga.players.getPlayerByNo(i).name}'s hand</b>
-                        <div id="player_${i}_hand"></div>
-                    </div>
+                        <div id="player_${player_id}_hand" class="player_block">
+                            <b id="player_${player_id}_hand_label">${this.bga.players.getPlayerById(player_id).name}'s hand</b>
+                        </div>
                 `
             );
         }
+
+
+        // close the "otherplayers" and "table" tags
+        this.bga.gameArea.getElement().insertAdjacentHTML(
+            "beforeend",
+            `
+                    </div><!-- close otherplayers -->
+                    <div id="hand_block">
+                        <b id="hand_label">${_("My hand")}</b>
+                        <div id="hand"></div>
+                    </div>
+                </div><!-- close table -->
+            `
+        );
 
         // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
         this.animationManager = new BgaAnimations.Manager({
@@ -134,18 +146,33 @@ export class Game {
         });
 
         this.deck = new BgaCards.Deck(this.cardsManager, document.getElementById('deck'), {
-            cardNumber: gamedatas.deck,
+            cardNumber: args.deck,
             counter: {
                 position: 'center',
                 extraClasses: 'text-shadow'
             }
         });
 
+        for (let i = 0; i < args.player_ids.length; i++) {
+            let player_id = args.player_ids[i];
+            if (player_id == this.bga.players.getCurrentPlayerId()) continue;
+
+            this["player_" + player_id + "_hand"] = new BgaCards.HandStock(
+                this.cardsManager,
+                document.getElementById("player_" + player_id + "_hand"),
+                {
+                    cardOverlap: 75
+                }
+            );
+
+            this.updateOtherPlayerHandCount(args);
+        }
+
         this.hand = new BgaCards.HandStock(
             this.cardsManager,
             document.getElementById("hand")
         );
-        this.hand.addCards(gamedatas.hand);
+        this.hand.addCards(args.hand);
 
         this.discard = new BgaCards.HandStock(
             this.cardsManager,
@@ -155,10 +182,10 @@ export class Game {
             }
         );
 
-        this.discard.addCards(gamedatas.discards);
+        this.discard.addCards(args.discards);
 
         this.hand.onCardClick = (card) => {
-            if (gamedatas.gamestate.name != "GameOn") this.hand.unselectAll();
+            if (args.gamestate.name != "GameOn") this.hand.unselectAll();
         };
 
         // Setup game notifications to handle (see "setupNotifications" method below)
@@ -253,7 +280,7 @@ export class Game {
                     this.bga.statusBar.setTitle(_('It\'s your turn...'));
 
                     this.playButton.disabled = false;
- 
+
                     this.hand.setSelectionMode('multiple', selectableCards);
                 }
             }
@@ -274,6 +301,23 @@ export class Game {
         });
     }
 
+    updateOtherPlayerHandCount(args) {
+        for (let i = 0; i < args.player_ids.length; i++) {
+            let player_id = args.player_ids[i];
+            if (player_id == this.bga.players.getCurrentPlayerId()) continue;
+
+            this["player_" + player_id + "_hand"].removeAll();
+
+            for (let j = 0; j < args["player_" + player_id + "_hand"]; j++) {
+                this["player_" + player_id + "_hand"].addCard({
+                    id: "player_" + player_id + "_card_" + j,
+                    suit: 0,
+                    rank: 0
+                });
+            }
+        }
+    }
+
     async notif_NewHand(args) {
         // We received a new full hand of cards.
         await this.hand.removeAll();
@@ -285,6 +329,7 @@ export class Game {
         this.drew = 0;
         this.deck.setCardNumber(args.deck);
 
+        this.updateOtherPlayerHandCount(args);
         this.setPlayOptions();
     }
 
@@ -295,7 +340,13 @@ export class Game {
         this.drew = 1;
         this.draw_count = 0;
         this.deck.setCardNumber(args.deck);
+
+        this.updateOtherPlayerHandCount(args);
         this.setPlayOptions();
+    }
+
+    async notif_Pass(args) {
+        this.skip_count = 0;
     }
 
     async notif_NextPlayer(args) {
@@ -305,6 +356,7 @@ export class Game {
 
     async notif_PlayCards(args) {
         this.discard.addCards(Array.from(Object.values(args.cards)));
+        this.updateOtherPlayerHandCount(args);
         this.skip_count = args.skip_count;
         this.draw_count = args.draw_count;
     }

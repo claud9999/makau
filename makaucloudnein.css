@@ -17,19 +17,46 @@
   --h-tableau-height: 180px;
 }
 
-#hand {
-  position: flex;
-  width: calc(var(--h-card-width) * 5.5);
+#hand_block {
+  width: 100%;
   height: calc(var(--h-card-height) * 1.2);
 }
 
-#table {
+#hand {
   position: flex;
+  width: 100%;
+  height: calc(var(--h-card-height) * 1.2);
+}
+
+#otherstuff {
+  width: 100%;
+  height: var(--h-card-height);
+} 
+
+#table {
   width: 100%;
   height: 100%;
 }
 
-#discard {
-  width: calc(100% - var(--h-card-width));
+#deck {
+  width: var(--h-card-width);
+  height: calc(var(--h-card-height) * 1.2);
+  float: left;
+}
+
+.player_blocks {
+  width: 100%;
+  height: calc(var(--h-card-height) * 1.2);
+}
+
+.player_block {
+  width: 33%;
   height: var(--h-card-height);
+  float: left;
+}
+
+#discard {
+  width: calc(100% - var(--h-card-width) - 10px);
+  height: var(--h-card-height);
+  float: left;
 }

@@ -58,14 +58,20 @@ class Game extends \Bga\GameFramework\Table
         $cards = $this->cards;
         $result = [];
 
-        $result["player_ids"] = $this->getCollectionFromDb(
+        $result["player_ids"] = array_keys($this->getCollectionFromDb(
             "SELECT `player_id` AS `id` FROM `player`"
-        );
+        ));
+        $this->debug('player_ids: ' . json_encode($result["player_ids"]));
+
         for ($i = 0; $i < count($result["player_ids"]); $i++) {
-            if ($result["player_ids"][$i]["id"] == $currentPlayerId) {
+            $player_id = $result["player_ids"][$i];
+            if ($player_id == $currentPlayerId) {
                 $result['my_player_no'] = $i;
+            } else {
+                $result["player_{$player_id}_hand"] = $cards->countItemsInLocation(['hand', $player_id]);
             }
         }
+
         $result['deck'] = $cards->countItemsInLocation('deck');
         $result['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
         $result['discards'] = $cards->getItemsInLocation('discard')->values();
@@ -164,11 +170,13 @@ class Game extends \Bga\GameFramework\Table
         return $matchingCards;
     }
 
-    function getCardName($card): string {
+    function getCardName($card): string
+    {
         return ('The ' . $this->card_types['ranks'][$card->rank]['name'] . " of " . $this->card_types['suits'][$card->suit]['name'] . 's');
     }
 
-    function getCardNames($cards): string {
+    function getCardNames($cards): string
+    {
         return implode(", ", array_map(fn($card) => $this->getCardName($card), $cards));
     }
 }
