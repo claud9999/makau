@@ -33,14 +33,26 @@ class GameOn extends GameState
         if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('active_player_no'))
             return null;
 
+        // I have more skips to skip
+        if ($this->bga->globals->get('skip_count_' . $currentPlayerId) > 0)
+            $this->bga->globals->set('skip_count_' . $currentPlayerId, $this->bga->globals->get('skip_count_' . $currentPlayerId) - 1);
+
+        // Uh oh, I guess I am getting skipped at least once
+        if ($this->bga->globals->get('skip_count') > 1)
+            $this->bga->globals->set('skip_count_' . $currentPlayerId, $this->bga->globals->get('skip_count') - 1);
+        
+
         $this->bga->globals->set('skip_count', 0);
+
         $this->game->notify->all(
             'Pass',
             clienttranslate('${player_name} passes'),
             [
                 'player_name' => $this->game->getPlayerNameById($currentPlayerId),
                 'player_ids' => [$currentPlayerId],
+            ]
         );
+
         return NextPlayer::class;
     }
 
@@ -86,9 +98,11 @@ class GameOn extends GameState
     #[PossibleAction]
     public function actPlay(#[IntArrayParam()] array $cardIds, int $currentPlayerId)
     {
-        if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('active_player_no'))
-            return null;
-
+        if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('active_player_no')
+            || $this->bga->globals->get('drew') // can only play before drawing
+            || $this->bga->globals->get('skip_count_' . $currentPlayerId) > 0 // I need to skip
+            ) return null; // can only play before drawing
+        
         $discards = $this->game->cards->getItemsInLocation('discard');
         $top = $this->game->cards->getItemOnTop('discard');
         $playedCards = [];

@@ -89,6 +89,8 @@ export class Game {
 
         for (let i = 0; i < args.player_ids.length; i++) {
             let player_id = args.player_ids[i];
+            this['skip_count_' + player_id] = args['skip_count_' + player_id];
+
             if (player_id == this.bga.players.getCurrentPlayerId()) continue;
 
             this.bga.gameArea.getElement().insertAdjacentHTML(
@@ -234,7 +236,9 @@ export class Game {
 
         if (this.bga.players.getCurrentPlayerNo() == this.active_player_no) {
             let selectableCards = [];
-            if (this.skip_count > 0) {
+            if (this['skip_count_' + this.bga.players.getCurrentPlayerId()] > 0) {
+                this.passButton.disabled = false;
+            } else if (this.skip_count > 0) {
                 selectableCards = this.getPlayableCards(topDiscard, handCards);
 
                 if (selectableCards.length < 1) {
@@ -346,6 +350,9 @@ export class Game {
     }
 
     async notif_Pass(args) {
+        if (this.skip_count > 1) {
+            this['skip_count_' + args.player_id] = this.skip_count - 1;
+        }
         this.skip_count = 0;
     }
 

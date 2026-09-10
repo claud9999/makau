@@ -65,6 +65,7 @@ class Game extends \Bga\GameFramework\Table
 
         for ($i = 0; $i < count($result["player_ids"]); $i++) {
             $player_id = $result["player_ids"][$i];
+            $result["skip_count_{$player_id}"] = $this->bga->globals->get("skip_count_{$player_id}");
             if ($player_id == $currentPlayerId) {
                 $result['my_player_no'] = $i;
             } else {
@@ -75,8 +76,8 @@ class Game extends \Bga\GameFramework\Table
         $result['deck'] = $cards->countItemsInLocation('deck');
         $result['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
         $result['discards'] = $cards->getItemsInLocation('discard')->values();
-        $result['skip_count'] = $this->bga->globals->get('skip_count');
         $result['draw_count'] = $this->bga->globals->get('draw_count');
+        $result['skip_count'] = $this->bga->globals->get('skip_count');
         $result['suit_demand'] = $this->bga->globals->get('suit_demand');
         $result['rank_demand'] = $this->bga->globals->get('rank_demand');
         $result['last_jack'] = $this->bga->globals->get('last_jack');
@@ -94,8 +95,8 @@ class Game extends \Bga\GameFramework\Table
         $this->cards = $this->cardManager->cards;
 
         $this->bga->globals->set('active_player_no', 0);
-        $this->bga->globals->set('skip_count', 0);
         $this->bga->globals->set('draw_count', 0);
+        $this->bga->globals->set('skip_count', 0);
         $this->bga->globals->set('drew', 0);
         $this->bga->globals->set('suit_demand', 0);
         $this->bga->globals->set('rank_demand', 0);
@@ -105,6 +106,7 @@ class Game extends \Bga\GameFramework\Table
         $default_colors = $gameinfos['player_colors'];
 
         foreach ($players as $player_id => $player) {
+        $this->bga->globals->set("skip_count_{$player_id}", 0);
             // Now you can access both $player_id and $player array
             $query_values[] = vsprintf("(%s, '%s', '%s')", [
                 $player_id,
