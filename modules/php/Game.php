@@ -76,8 +76,8 @@ class Game extends \Bga\GameFramework\Table
         $result['deck'] = $cards->countItemsInLocation('deck');
         $result['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
         $result['discards'] = $cards->getItemsInLocation('discard')->values();
-        $result['draw_count'] = $this->bga->globals->get('draw_count');
-        $result['skip_count'] = $this->bga->globals->get('skip_count');
+        $result['draw'] = $this->bga->globals->get('draw_' . $currentPlayerId);
+        $result['skip'] = $this->bga->globals->get('skip_' . $currentPlayerId);
         $result['suit_demand'] = $this->bga->globals->get('suit_demand');
         $result['rank_demand'] = $this->bga->globals->get('rank_demand');
         $result['last_jack'] = $this->bga->globals->get('last_jack');
@@ -94,19 +94,10 @@ class Game extends \Bga\GameFramework\Table
         $this->cardManager->setup();
         $this->cards = $this->cardManager->cards;
 
-        $this->bga->globals->set('active_player_no', 0);
-        $this->bga->globals->set('draw_count', 0);
-        $this->bga->globals->set('skip_count', 0);
-        $this->bga->globals->set('drew', 0);
-        $this->bga->globals->set('suit_demand', 0);
-        $this->bga->globals->set('rank_demand', 0);
-        $this->bga->globals->set('last_jack', 0);
-
         $gameinfos = $this->getGameinfos();
         $default_colors = $gameinfos['player_colors'];
 
         foreach ($players as $player_id => $player) {
-        $this->bga->globals->set("skip_count_{$player_id}", 0);
             // Now you can access both $player_id and $player array
             $query_values[] = vsprintf("(%s, '%s', '%s')", [
                 $player_id,
@@ -139,17 +130,17 @@ class Game extends \Bga\GameFramework\Table
 
     Should match getPlayableCards in Game.js
     */
-    function getPlayableCards($top, $cards): array
+    function getPlayableCards($top, $cards, $currentPlayerId): array
     {
         $matchingCards = [];
 
         for ($i = 0; $i < count($cards); $i++) {
             $card = $cards[$i];
-            if ($this->bga->globals->get('skip_count') > 0) {
+            if ($this->bga->globals->get('skip') > 0) {
                 if ($card->rank == 4)
                     $matchingCards[] = $card;
                 $top = $card;
-            } else if ($this->bga->globals->get('draw_count') > 0) {
+            } else if ($this->bga->globals->get('draw') > 0) {
                 if (
                     $card->rank == 2
                     || $card->rank == 3

@@ -27,7 +27,7 @@ class NextPlayer extends GameState
     }
 
     function onEnteringState()
-    {  
+    {
         $player_count = $this->game->getPlayerCount();
         $active_player_no = $this->bga->globals->get('active_player_no');
         $active_player_no++;
@@ -36,9 +36,10 @@ class NextPlayer extends GameState
         $this->bga->globals->set('active_player_no', $active_player_no);
         $this->bga->globals->set('drew', 0);
 
-
         $this->game->bga->notify->all('NextPlayer', '', [
-            'active_player_no' => $active_player_no
+            'active_player_no' => $active_player_no,
+            'draw' => $this->bga->globals->get('draw_' . $this->game->getCurrentPlayerId()),
+            'skip' => $this->bga->globals->get('skip_' . $this->game->getCurrentPlayerId()),
         ]);
 
         return GameOn::class;

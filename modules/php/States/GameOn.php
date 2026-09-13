@@ -34,15 +34,14 @@ class GameOn extends GameState
             return null;
 
         // I have more skips to skip
-        if ($this->bga->globals->get('skip_count_' . $currentPlayerId) > 0)
-            $this->bga->globals->set('skip_count_' . $currentPlayerId, $this->bga->globals->get('skip_count_' . $currentPlayerId) - 1);
+        if ($this->bga->globals->get('skip_' . $currentPlayerId) > 0)
+            $this->bga->globals->set('skip_' . $currentPlayerId, $this->bga->globals->get('skip_' . $currentPlayerId) - 1);
 
-        // Uh oh, I guess I am getting skipped at least once
-        if ($this->bga->globals->get('skip_count') > 1)
-            $this->bga->globals->set('skip_count_' . $currentPlayerId, $this->bga->globals->get('skip_count') - 1);
-        
-
-        $this->bga->globals->set('skip_count', 0);
+        // first skip
+        if ($this->bga->globals->get('skip') > 0) {
+            $this->bga->globals->set('skip_' . $currentPlayerId, $this->bga->globals->get('skip') - 1);
+            $this->bga->globals->set('skip', 0);
+        }
 
         $this->game->notify->all(
             'Pass',
@@ -62,18 +61,16 @@ class GameOn extends GameState
         if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('active_player_no'))
             return null;
 
-
         if ($this->bga->globals->get('drew')) return; // can only draw once
-        $this->bga->globals->set('drew', 1);
-
         $nextplayer = false;
-        $draw_count = $this->bga->globals->get('draw_count');
+        $draw_count = $this->bga->globals->get('draw_' . $currentPlayerId);
         if ($draw_count == 0) $draw_count = 1;
         else $nextplayer = true;
 
         $cards = $this->game->cards->pickItems($draw_count, 'deck', ['hand', $currentPlayerId])->values();
 
         $this->bga->globals->set('draw_count', 0);
+        $this->bga->globals->set('drew', $draw_count);
 
         $this->game->notify->all(
             'DrawCards',
@@ -98,16 +95,22 @@ class GameOn extends GameState
     #[PossibleAction]
     public function actPlay(#[IntArrayParam()] array $cardIds, int $currentPlayerId)
     {
-        if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('active_player_no')
-            || $this->bga->globals->get('drew') // can only play before drawing
-            || $this->bga->globals->get('skip_count_' . $currentPlayerId) > 0 // I need to skip
-            ) return null; // can only play before drawing
-        
+        if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('active_player_no')) return null; // can only play before drawing
+
         $discards = $this->game->cards->getItemsInLocation('discard');
         $top = $this->game->cards->getItemOnTop('discard');
         $playedCards = [];
 
         $cards = $this->game->cards->getItemsByIds($cardIds)->values();
+        if ($this->bga->globals->get('drew') == 1 and count($cards) > 1) {
+            $this->game->notify->player(
+                $currentPlayerId,
+                'InvalidPlay',
+                'You cannot play more than one card after drawing',
+                []
+            );
+            return null;
+        }
         $playableCards = $this->game->getPlayableCards($top, $cards);
 
         if (count($playableCards) < count($cards)) {
@@ -120,8 +123,8 @@ class GameOn extends GameState
             return null;
         }
 
-        $skip_count = $this->bga->globals->get('skip_count');
-        $draw_count = $this->bga->globals->get('draw_count');
+        $draw = $this->bga->globals->get('draw');
+        $skip = $this->bga->globals->get('skip');
         $suit_demand = $this->bga->globals->get('suit_demand');
         $rank_demand = $this->bga->globals->get('rank_demand');
         $last_jack = $this->bga->globals->get('last_jack');
@@ -129,15 +132,14 @@ class GameOn extends GameState
         for ($i = 0; $i < count($cards); $i++) {
             $card = $cards[$i];
             if ($card->rank == 2 || $card->rank == 3) {
-                $draw_count += $card->rank;
+                $draw += $card->rank;
             }
             if ($card->rank == 4) {
-                $skip_count++;
+                $skip += 1;
             }
         }
-
-        $this->bga->globals->set('skip_count', $skip_count);
-        $this->bga->globals->set('draw_count', $draw_count);
+        $this->bga->globals->set('draw', $draw);
+        $this->bga->globals->set('skip', $skip);
         $this->bga->globals->set('suit_demand', $suit_demand);
         $this->bga->globals->set('rank_demand', $rank_demand);
         $this->bga->globals->set('last_jack', $last_jack);
@@ -149,13 +151,13 @@ class GameOn extends GameState
             '',
             [
                 'cards' => $cards,
-                'skip_count' => $skip_count,
-                'draw_count' => $draw_count,
+                'draw' => $draw,
+                'skip' => $skip,
                 'suit_demand' => $suit_demand,
                 'rank_demand' => $rank_demand,
                 'last_jack' => $last_jack,
                 'player_ids' => [$currentPlayerId],
-                "player_{$currentPlayerId}_hand" => $this->game->cards->countItemsInLocation(['hand', $currentPlayerId]),
+                "hand_{$currentPlayerId}" => $this->game->cards->countItemsInLocation(['hand', $currentPlayerId]),
             ]
         );
 

@@ -67,9 +67,13 @@ export class Game {
     setup(args) {
         console.log("Starting game setup");
         this.active_player_no = args.active_player_no;
-        this.skip_count = args.skip_count;
-        this.draw_count = args.draw_count;
+        this.skip = args.skip;
+        this.draw = args.draw;
         this.drew = args.drew;
+
+        if (args['skip_' + this.bga.players.getCurrentPlayerId()] > 0) {
+            this.skip_prev = args['skip_' + this.bga.players.getCurrentPlayerId()];
+        }
 
         this.bga.gameArea.getElement().insertAdjacentHTML(
             "beforeend",
@@ -89,20 +93,18 @@ export class Game {
 
         for (let i = 0; i < args.player_ids.length; i++) {
             let player_id = args.player_ids[i];
-            this['skip_count_' + player_id] = args['skip_count_' + player_id];
 
             if (player_id == this.bga.players.getCurrentPlayerId()) continue;
 
             this.bga.gameArea.getElement().insertAdjacentHTML(
                 "beforeend",
                 `
-                        <div id="player_${player_id}_hand" class="player_block">
-                            <b id="player_${player_id}_hand_label">${this.bga.players.getPlayerById(player_id).name}'s hand</b>
+                        <div id="hand_${player_id}" class="player_block">
+                            <b id="hand_${player_id}_label">${this.bga.players.getPlayerById(player_id).name}'s hand</b>
                         </div>
                 `
             );
         }
-
 
         // close the "otherplayers" and "table" tags
         this.bga.gameArea.getElement().insertAdjacentHTML(
@@ -159,9 +161,9 @@ export class Game {
             let player_id = args.player_ids[i];
             if (player_id == this.bga.players.getCurrentPlayerId()) continue;
 
-            this["player_" + player_id + "_hand"] = new BgaCards.HandStock(
+            this["hand_" + player_id] = new BgaCards.HandStock(
                 this.cardsManager,
-                document.getElementById("player_" + player_id + "_hand"),
+                document.getElementById("hand_" + player_id),
                 {
                     cardOverlap: 75
                 }
@@ -202,7 +204,7 @@ export class Game {
 
         for (let i = 0; i < cards.length; i++) {
             let card = cards[i];
-            if (this.skip_count > 0) {
+            if (this.skip > 0) {
                 if (card.rank == 4)
                     matchingCards.push(card);
             } else if (this.draw_count > 0) {
@@ -236,9 +238,11 @@ export class Game {
 
         if (this.bga.players.getCurrentPlayerNo() == this.active_player_no) {
             let selectableCards = [];
-            if (this['skip_count_' + this.bga.players.getCurrentPlayerId()] > 0) {
-                this.passButton.disabled = false;
-            } else if (this.skip_count > 0) {
+            if (this.skip_prev > 0) {
+                    this.bga.statusBar.setTitle(_('You must skip your turn.'));
+                    this.hand.setSelectionMode('none');
+                    this.passButton.disabled = false;
+            } else if (this.skip > 0) {
                 selectableCards = this.getPlayableCards(topDiscard, handCards);
 
                 if (selectableCards.length < 1) {
@@ -253,7 +257,7 @@ export class Game {
 
                     this.hand.setSelectionMode('multiple', selectableCards);
                 }
-            } else if (this.draw_count > 0) {
+            } else if (this.draw > 0) {
                 selectableCards = this.getPlayableCards(topDiscard, handCards);
 
                 if (selectableCards.length < 1) {
@@ -310,10 +314,10 @@ export class Game {
             let player_id = args.player_ids[i];
             if (player_id == this.bga.players.getCurrentPlayerId()) continue;
 
-            this["player_" + player_id + "_hand"].removeAll();
+            this["hand_" + player_id].removeAll();
 
-            for (let j = 0; j < args["player_" + player_id + "_hand"]; j++) {
-                this["player_" + player_id + "_hand"].addCard({
+            for (let j = 0; j < args["hand_" + player_id]; j++) {
+                this["hand_" + player_id].addCard({
                     id: "player_" + player_id + "_card_" + j,
                     suit: 0,
                     rank: 0
@@ -350,22 +354,21 @@ export class Game {
     }
 
     async notif_Pass(args) {
-        if (this.skip_count > 1) {
-            this['skip_count_' + args.player_id] = this.skip_count - 1;
+        if (this['skip_' + args.player_id] > 0) {
+            this['skip_' + args.player_id] = this.skip_count - 1;
         }
-        this.skip_count = 0;
     }
 
     async notif_NextPlayer(args) {
         this.active_player_no = args.active_player_no;
         this.drew = 0;
+        this.draw = args.draw;
+        this.skip = args.skip;
     }
 
     async notif_PlayCards(args) {
         this.discard.addCards(Array.from(Object.values(args.cards)));
         this.updateOtherPlayerHandCount(args);
-        this.skip_count = args.skip_count;
-        this.draw_count = args.draw_count;
     }
 
     async notif_InvalidPlay(args) {

@@ -33,9 +33,16 @@ class NewHand extends GameState
         $this->gamestate->setAllPlayersMultiactive();
 
         $this->bga->globals->set('active_player_no', 1);
-        $this->bga->globals->set('skip_count', 0);
-        $this->bga->globals->set('draw_count', 0);
         $this->bga->globals->set('drew', 0);
+        $this->bga->globals->set('suit_demand', 0);
+        $this->bga->globals->set('rank_demand', 0);
+        $this->bga->globals->set('last_jack', 0);
+        $this->bga->globals->set("draw", 0);
+        $this->bga->globals->set("skip", 0);
+
+        foreach ($this->gamestate->getActivePlayerList() as $player_id) {
+            $this->bga->globals->set("skip_{$player_id}", 0);
+        }
 
         $cards->moveAllItemsInLocation(null, 'deck');
         $cards->shuffle('deck');
