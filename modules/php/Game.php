@@ -56,36 +56,38 @@ class Game extends \Bga\GameFramework\Table
     protected function getAllDatas(int $currentPlayerId): array
     {
         $cards = $this->cards;
-        $result = [];
+        $globals = $this->bga->globals;
+        $args = [];
 
-        $result["player_ids"] = array_keys($this->getCollectionFromDb(
+        $args["player_ids"] = array_keys($this->getCollectionFromDb(
             "SELECT `player_id` AS `id` FROM `player`"
         ));
-        $this->debug('player_ids: ' . json_encode($result["player_ids"]));
 
-        for ($i = 0; $i < count($result["player_ids"]); $i++) {
-            $player_id = $result["player_ids"][$i];
-            $result["skip_count_{$player_id}"] = $this->bga->globals->get("skip_count_{$player_id}");
+        for ($i = 0; $i < count($args["player_ids"]); $i++) {
+            $player_id = $args["player_ids"][$i];
+            $args["skip_{$player_id}"] = $globals->get("skip_{$player_id}");
             if ($player_id == $currentPlayerId) {
-                $result['my_player_no'] = $i;
+                $args['my_player_no'] = $i;
             } else {
-                $result["player_{$player_id}_hand"] = $cards->countItemsInLocation(['hand', $player_id]);
+                $args["player_{$player_id}_hand"] = $cards->countItemsInLocation(['hand', $player_id]);
             }
         }
 
-        $result['deck'] = $cards->countItemsInLocation('deck');
-        $result['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
-        $result['discards'] = $cards->getItemsInLocation('discard')->values();
-        $result['draw'] = $this->bga->globals->get('draw_' . $currentPlayerId);
-        $result['skip'] = $this->bga->globals->get('skip_' . $currentPlayerId);
-        $result['suit_demand'] = $this->bga->globals->get('suit_demand');
-        $result['rank_demand'] = $this->bga->globals->get('rank_demand');
-        $result['last_jack'] = $this->bga->globals->get('last_jack');
-        $result['active_player_no'] = $this->bga->globals->get('active_player_no');
-        $result['drew'] = $this->bga->globals->get('drew');
+        extract($globals->getAll('draw', 'skip', 'suit_demand', 'rank_demand', 'last_jack', 'active_player_no', 'drew'));
+
+        $args['deck'] = $cards->countItemsInLocation('deck');
+        $args['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
+        $args['discards'] = $cards->getItemsInLocation('discard')->values();
+        $args['draw'] = $draw;
+        $args['skip'] = $skip;
+        $args['suit_demand'] = $suit_demand;
+        $args['rank_demand'] = $rank_demand;
+        $args['last_jack'] = $last_jack;
+        $args['active_player_no'] = $active_player_no;
+        $args['drew'] = $drew;
 
 
-        return $result;
+        return $args;
     }
 
     protected function setupNewGame($players, $options = [])
@@ -117,59 +119,5 @@ class Game extends \Bga\GameFramework\Table
         $this->reloadPlayersBasicInfos();
 
         return NewHand::class;
-    }
-
-    /* Logic:
-    If there is a "draw demand", the only cards the current player can play is another draw card.
-    If there is a "skip demand", the only cards the current player can play is another skip card.
-    If the previous card was an A and a suit was called, only that suit can be played. If "Free" was called, any non-action card.
-    If the a player played a J and a rank was called, only that rank can be played, or another J. If "Any" was called, any non-action card or another J.
-    If no skip and no draw demanded, play matching suit or rank or a wild card (A, Q).
-
-    Jokers, when played, are declared as to what kind of card they represent.
-
-    Should match getPlayableCards in Game.js
-    */
-    function getPlayableCards($top, $cards, $currentPlayerId): array
-    {
-        $matchingCards = [];
-
-        for ($i = 0; $i < count($cards); $i++) {
-            $card = $cards[$i];
-            if ($this->bga->globals->get('skip') > 0) {
-                if ($card->rank == 4)
-                    $matchingCards[] = $card;
-                $top = $card;
-            } else if ($this->bga->globals->get('draw') > 0) {
-                if (
-                    $card->rank == 2
-                    || $card->rank == 3
-                    || $card->rank == 13 // king
-                )
-                    $matchingCards[] = $card;
-                $top = $card;
-            } else {
-                if (
-                    $card->rank == 12 // queen
-                    || $card->suit == $top->suit
-                    || $card->rank == $top->rank
-                    || $top->rank == 12 // queen
-                )
-                    $matchingCards[] = $card;
-                $top = $card;
-            }
-        }
-
-        return $matchingCards;
-    }
-
-    function getCardName($card): string
-    {
-        return ('The ' . $this->card_types['ranks'][$card->rank]['name'] . " of " . $this->card_types['suits'][$card->suit]['name'] . 's');
-    }
-
-    function getCardNames($cards): string
-    {
-        return implode(", ", array_map(fn($card) => $this->getCardName($card), $cards));
     }
 }

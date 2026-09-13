@@ -67,12 +67,13 @@ export class Game {
     setup(args) {
         console.log("Starting game setup");
         this.active_player_no = args.active_player_no;
+        this.player_ids = args.player_ids;
         this.skip = args.skip;
         this.draw = args.draw;
         this.drew = args.drew;
 
-        if (args['skip_' + this.bga.players.getCurrentPlayerId()] > 0) {
-            this.skip_prev = args['skip_' + this.bga.players.getCurrentPlayerId()];
+        if (args[`skip_${this.bga.players.getCurrentPlayerId()}`] > 0) {
+            this.skip_prev = args[`skip_${this.bga.players.getCurrentPlayerId()}`];
         }
 
         this.bga.gameArea.getElement().insertAdjacentHTML(
@@ -161,9 +162,9 @@ export class Game {
             let player_id = args.player_ids[i];
             if (player_id == this.bga.players.getCurrentPlayerId()) continue;
 
-            this["hand_" + player_id] = new BgaCards.HandStock(
+            this[`hand_${player_id}`] = new BgaCards.HandStock(
                 this.cardsManager,
-                document.getElementById("hand_" + player_id),
+                document.getElementById(`hand_${player_id}`),
                 {
                     cardOverlap: 75
                 }
@@ -198,7 +199,7 @@ export class Game {
         console.log("Ending game setup");
     }
 
-    // Should match getPlayableCards in Game.php
+    // Should match getPlayableCards in States/GameOn.php
     getPlayableCards(top, cards) {
         let matchingCards = [];
 
@@ -310,15 +311,15 @@ export class Game {
     }
 
     updateOtherPlayerHandCount(args) {
-        for (let i = 0; i < args.player_ids.length; i++) {
-            let player_id = args.player_ids[i];
+        for (let i = 0; i < this.player_ids.length; i++) {
+            let player_id =  this.player_ids[i];
             if (player_id == this.bga.players.getCurrentPlayerId()) continue;
 
-            this["hand_" + player_id].removeAll();
+            this[`hand_${player_id}`].removeAll();
 
-            for (let j = 0; j < args["hand_" + player_id]; j++) {
-                this["hand_" + player_id].addCard({
-                    id: "player_" + player_id + "_card_" + j,
+            for (let j = 0; j < args[`hand_${player_id}`]; j++) {
+                this[`hand_${player_id}`].addCard({
+                    id: "player_${player_id}_card_${j}",
                     suit: 0,
                     rank: 0
                 });
@@ -354,8 +355,9 @@ export class Game {
     }
 
     async notif_Pass(args) {
-        if (this['skip_' + args.player_id] > 0) {
-            this['skip_' + args.player_id] = this.skip_count - 1;
+        if (this[`skip_${args.player_id}`] > 0) {
+            this[`skip_${args.player_id}`] = this.skip - 1;
+            this.skip = 0;
         }
     }
 
