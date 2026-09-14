@@ -246,9 +246,9 @@ export class Game {
         if (this.bga.players.getCurrentPlayerNo() == this.active_player_no) {
             let selectableCards = [];
             if (this.skip_prev > 0) {
-                    this.bga.statusBar.setTitle(_('You must skip your turn.'));
-                    this.hand.setSelectionMode('none');
-                    this.passButton.disabled = false;
+                this.bga.statusBar.setTitle(_('You must skip your turn.'));
+                this.hand.setSelectionMode('none');
+                this.passButton.disabled = false;
             } else if (this.skip > 0) {
                 selectableCards = this.getPlayableCards(topDiscard, handCards);
 
@@ -281,7 +281,7 @@ export class Game {
                 }
             } else {
                 this.drawButton.disabled = this.drew;
-                this.passButton.disabled = !this.drew;
+                this.passButton.disabled = false;
                 for (let i = 0; i < handCards.length; i++) {
                     let card = handCards[i];
                     if (card.suit == topDiscard.suit || card.rank == topDiscard.rank || card.rank == 12 || topDiscard.rank == 12) {
@@ -318,9 +318,8 @@ export class Game {
 
     updateOtherPlayerHandCount(args) {
         for (let i = 0; i < this.player_ids.length; i++) {
-            let player_id =  this.player_ids[i];
-            if (player_id == this.bga.players.getCurrentPlayerId()) continue;
-            if (args[`hand_${player_id}`] < 1) continue;
+            let player_id = this.player_ids[i];
+            if (args[`hand_${player_id}`] == undefined || this[`hand_${player_id}`] == undefined) continue;
 
             this[`hand_${player_id}`].removeAll();
 
@@ -354,7 +353,7 @@ export class Game {
         if (args._private) {
             await this.hand.addCards(args._private.cards);
         }
-        this.drew = 1;
+        this.drew = 0;
         this.draw_count = 0;
         this.deck.setCardNumber(args.deck);
 
@@ -366,6 +365,17 @@ export class Game {
         if (this[`skip_${args.player_id}`] > 0) {
             this[`skip_${args.player_id}`] = this.skip - 1;
             this.skip = 0;
+        }
+    }
+
+    async notif_DrawCards(args) {
+        this.deck.setCardNumber(args.deck);
+        if (args._private) {
+            this.hand.addCards(Array.from(Object.values(args._private.cards)));
+            this.drew = 1;
+            this.setPlayOptions();
+        } else {
+            this.updateOtherPlayerHandCount(args);
         }
     }
 

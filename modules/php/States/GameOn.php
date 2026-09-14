@@ -71,7 +71,7 @@ class GameOn extends GameState
         if ($draw_count == 0) $draw_count = 1;
         else $nextplayer = true;
 
-        $cards = $cards->pickItems($draw_count, 'deck', ['hand', $currentPlayerId])->values();
+        $drawnCards = $cards->pickItems($draw_count, 'deck', ['hand', $currentPlayerId])->values();
 
         $globals->set('draw_count', 0);
         $globals->set('drew', $draw_count);
@@ -86,7 +86,7 @@ class GameOn extends GameState
                 "hand_{$currentPlayerId}" => $cards->countItemsInLocation(['hand', $currentPlayerId]),
                 '_private' => [
                     $currentPlayerId => [
-                        'cards' => $cards
+                        'cards' => $drawnCards
                     ]
                 ]
             ]
@@ -125,7 +125,7 @@ class GameOn extends GameState
             $game->notify->player(
                 $currentPlayerId,
                 'InvalidPlay',
-                'You cannot play ' . $game->getCardName($playedCards[count($playableCards)]),
+                'You cannot play ' . $this->getCardName($playedCards[count($playableCards)]),
                 []
             );
             return null;
@@ -218,7 +218,7 @@ class GameOn extends GameState
 
     function getCardName($card): string
     {
-        return ('The ' . $this->card_types['ranks'][$card->rank]['name'] . " of " . $this->card_types['suits'][$card->suit]['name'] . 's');
+        return ('The ' . $this->game->card_types['ranks'][$card->rank]['name'] . " of " . $this->game->card_types['suits'][$card->suit]['name'] . 's');
     }
 
     function getCardNames($cards): string
