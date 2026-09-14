@@ -216,7 +216,7 @@ export class Game {
             if (this.skip > 0) {
                 if (card.rank == 4)
                     matchingCards.push(card);
-            } else if (this.draw_count > 0) {
+            } else if (this.draw > 0) {
                 if (card.rank == 2
                     || card.rank == 3
                     || card.rank == 13 // king
