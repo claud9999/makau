@@ -110,17 +110,9 @@ class GameOn extends GameState
         $playedCards = [];
 
         $playedCards = $cards->getItemsByIds($cardIds)->values();
-        if ($globals->get('drew') == 1 and count($playedCards) > 1) {
-            $game->notify->player(
-                $currentPlayerId,
-                'InvalidPlay',
-                'You cannot play more than one card after drawing',
-                []
-            );
-            return null;
-        }
-        $playableCards = $this->getPlayableCards($top, $playedCards, $currentPlayerId);
 
+        $playableCards = $this->getPlayableCards($top, $playedCards, $currentPlayerId);
+        
         if (count($playableCards) < count($playedCards)) {
             $game->notify->player(
                 $currentPlayerId,
@@ -185,15 +177,16 @@ class GameOn extends GameState
     */
     function getPlayableCards($top, $cards, $currentPlayerId): array
     {
+        $globals = $this->bga->globals;
         $matchingCards = [];
 
         for ($i = 0; $i < count($cards); $i++) {
             $card = $cards[$i];
-            if ($this->bga->globals->get('skip') > 0) {
+            if ($globals->get('skip') > 0) {
                 if ($card->rank == 4)
                     $matchingCards[] = $card;
                 $top = $card;
-            } else if ($this->bga->globals->get('draw') > 0) {
+            } else if ($globals->get('draw') > 0) {
                 if (
                     $card->rank == 2
                     || $card->rank == 3

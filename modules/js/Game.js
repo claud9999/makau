@@ -388,6 +388,13 @@ export class Game {
 
     async notif_PlayCards(args) {
         this.discard.addCards(Array.from(Object.values(args.cards)));
+        
+        this.draw = args.draw;
+        this.skip = args.skip;
+        this.suit_demand = args.suit_demand;
+        this.rank_demand = args.rank_demand;
+        this.last_jack = args.last_jack;
+
         this.updateOtherPlayerHandCount(args);
     }
 
