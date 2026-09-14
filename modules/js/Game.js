@@ -87,11 +87,13 @@ export class Game {
             `
                     <div id="table" class="table" height="200px">
                         <div id="otherstuff">
-                            <div id="deck">
+                            <div id="deck_block" bgcolor="green">
                                 <b id="deck_label">${_("Deck")}</b>
+                                <div id="deck"></div>
                             </div>
-                            <div id="discard" bgcolor="yellow">
+                            <div id="discard_block" bgcolor="yellow">
                                 <b id="discard_label">${_("Discard pile")}</b>
+                                <div id="discard"></div>
                             </div>
                         </div>
                         <div id="otherplayers" class="player_blocks">

@@ -38,8 +38,14 @@
   height: 100%;
 }
 
-#deck {
+#deck_block {
   width: var(--h-card-width);
+  height: calc(var(--h-card-height) * 1.2);
+  float: left;
+}
+
+#discard_block {
+  width: calc(100% - var(--h-card-width) - 10px);
   height: calc(var(--h-card-height) * 1.2);
   float: left;
 }
