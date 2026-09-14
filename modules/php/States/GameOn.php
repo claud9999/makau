@@ -109,8 +109,8 @@ class GameOn extends GameState
         $top = $cards->getItemOnTop('discard');
         $playedCards = [];
 
-        $cards = $cards->getItemsByIds($cardIds)->values();
-        if ($globals->get('drew') == 1 and count($cards) > 1) {
+        $playedCards = $cards->getItemsByIds($cardIds)->values();
+        if ($globals->get('drew') == 1 and count($playedCards) > 1) {
             $game->notify->player(
                 $currentPlayerId,
                 'InvalidPlay',
@@ -119,13 +119,13 @@ class GameOn extends GameState
             );
             return null;
         }
-        $playableCards = $this->getPlayableCards($top, $cards);
+        $playableCards = $this->getPlayableCards($top, $playedCards, $currentPlayerId);
 
-        if (count($playableCards) < count($cards)) {
+        if (count($playableCards) < count($playedCards)) {
             $game->notify->player(
                 $currentPlayerId,
                 'InvalidPlay',
-                'You cannot play ' . $game->getCardName($cards[count($playableCards)]),
+                'You cannot play ' . $game->getCardName($playedCards[count($playableCards)]),
                 []
             );
             return null;
@@ -137,8 +137,8 @@ class GameOn extends GameState
         $rank_demand = $globals->get('rank_demand');
         $last_jack = $globals->get('last_jack');
 
-        for ($i = 0; $i < count($cards); $i++) {
-            $card = $cards[$i];
+        for ($i = 0; $i < count($playedCards); $i++) {
+            $card = $playedCards[$i];
             if ($card->rank == 2 || $card->rank == 3) {
                 $draw += $card->rank;
                 $globals->set('draw', $draw);
@@ -150,12 +150,12 @@ class GameOn extends GameState
         }
 
         // valid play, move the cards to the discard pile
-        $cards->moveItems($cards, 'discard');
+        $cards->moveItems($playedCards, 'discard');
         $game->notify->all(
             'PlayCards',
             '',
             [
-                'cards' => $cards,
+                'cards' => $playedCards,
                 'draw' => $draw,
                 'skip' => $skip,
                 'suit_demand' => $suit_demand,

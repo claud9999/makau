@@ -27,6 +27,7 @@ class CardManager
 
     public function reset()
     {
+        $cards = $this->cards;
         $cards->moveAllItemsInLocation(null, 'deck');
         $cards->shuffle('deck');
     }
@@ -35,6 +36,8 @@ class CardManager
     {
         $player_ids = array_keys($this->game->loadPlayersBasicInfos());
         $cards = $this->cards;
+
+        $this->reset();
 
         $discard = $cards->pickItem('deck', 'discard');
         while ($discard->rank < 5 || $discard->rank > 10)
