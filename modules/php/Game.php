@@ -69,7 +69,7 @@ class Game extends \Bga\GameFramework\Table
             if ($player_id == $currentPlayerId) {
                 $args['my_player_no'] = $i;
             } else {
-                $args["player_{$player_id}_hand"] = $cards->countItemsInLocation(['hand', $player_id]);
+                $args["hand_{$player_id}"] = $cards->countItemsInLocation(['hand', $player_id]);
             }
         }
 

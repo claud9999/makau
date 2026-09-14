@@ -320,12 +320,13 @@ export class Game {
         for (let i = 0; i < this.player_ids.length; i++) {
             let player_id =  this.player_ids[i];
             if (player_id == this.bga.players.getCurrentPlayerId()) continue;
+            if (args[`hand_${player_id}`] < 1) continue;
 
             this[`hand_${player_id}`].removeAll();
 
             for (let j = 0; j < args[`hand_${player_id}`]; j++) {
                 this[`hand_${player_id}`].addCard({
-                    id: "player_${player_id}_card_${j}",
+                    id: `player_${player_id}_card_${j}`,
                     suit: 0,
                     rank: 0
                 });

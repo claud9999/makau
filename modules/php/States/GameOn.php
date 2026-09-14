@@ -83,7 +83,7 @@ class GameOn extends GameState
                 'deck' => $cards->countItemsInLocation('deck'),
                 'player_name' => $game->getPlayerNameById($currentPlayerId),
                 'player_ids' => [$currentPlayerId],
-                'player_' . $currentPlayerId . '_hand' => $cards->countItemsInLocation(['hand', $currentPlayerId]),
+                "hand_{$currentPlayerId}" => $cards->countItemsInLocation(['hand', $currentPlayerId]),
                 '_private' => [
                     $currentPlayerId => [
                         'cards' => $cards
@@ -151,20 +151,17 @@ class GameOn extends GameState
 
         // valid play, move the cards to the discard pile
         $cards->moveItems($playedCards, 'discard');
-        $game->notify->all(
-            'PlayCards',
-            '',
-            [
-                'cards' => $playedCards,
-                'draw' => $draw,
-                'skip' => $skip,
-                'suit_demand' => $suit_demand,
-                'rank_demand' => $rank_demand,
-                'last_jack' => $last_jack,
-                'player_ids' => [$currentPlayerId],
-                "hand_{$currentPlayerId}" => $cards->countItemsInLocation(['hand', $currentPlayerId]),
-            ]
-        );
+
+        $game->notify->all('PlayCards', '', [
+            'cards' => $playedCards,
+            'draw' => $draw,
+            'skip' => $skip,
+            'suit_demand' => $suit_demand,
+            'rank_demand' => $rank_demand,
+            'last_jack' => $last_jack,
+            'player_ids' => [$currentPlayerId],
+            "hand_{$currentPlayerId}" => $cards->countItemsInLocation(['hand', $currentPlayerId]),
+        ]);
 
         return NextPlayer::class;
     }
