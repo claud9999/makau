@@ -38,8 +38,6 @@ class NextPlayer extends GameState
 
         $this->game->bga->notify->all('NextPlayer', '', [
             'active_player_no' => $active_player_no,
-            'draw' => $this->bga->globals->get('draw_' . $this->game->getCurrentPlayerId()),
-            'skip' => $this->bga->globals->get('skip_' . $this->game->getCurrentPlayerId()),
         ]);
 
         return GameOn::class;

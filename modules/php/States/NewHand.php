@@ -28,48 +28,10 @@ class NewHand extends GameState
 
     function onEnteringState()
     {
-        $game = $this->game;
-        $cards = $game->cards;
-        $player_ids = $this->gamestate->getActivePlayerList();
-        $globals = $this->bga->globals;
-
         $this->gamestate->setAllPlayersMultiactive();
 
-        $globals->set('active_player_no', 1);
-        $globals->set('drew', 0);
-        $globals->set('suit_demand', 0);
-        $globals->set('rank_demand', 0);
-        $globals->set('last_jack', 0);
-        $globals->set("draw", 0);
-        $globals->set("skip", 0);
+        $this->game->reset();
 
-        $cards->moveAllItemsInLocation(null, 'deck');
-        $cards->shuffle('deck');
-
-        $discard = $cards->pickItem('deck', 'discard');
-        while ($discard->rank < 5 || $discard->rank > 10)
-            $discard = $cards->pickItem('deck', 'discard');
-
-        $discards = $cards->getItemsInLocation('discard')->values();
-
-        $hand = $cards->getItemsInLocation('hand', $game->getCurrentPlayerId());
-
-        $args = [
-                'deck' => $cards->countItemsInLocation('deck'),
-                'hand' => $hand,
-                'discards' => $discards,
-                'active_player_no' => 1
-        ];
-
-        foreach ($player_ids as $player_id) {
-            $globals->set("skip_{$player_id}", 0);
-            $args["hand_{$plyayer_id}"] = 5;
-        }
-
-        foreach ($player_ids as $player_id) {
-            $hand = $cards->pickItems(5, 'deck', ['hand', (int)$player_id]);
-            $game->bga->notify->player((int)$player_id, 'NewHand', '', $args);
-        }
         return NextPlayer::class;
     }
 

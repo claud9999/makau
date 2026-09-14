@@ -17,11 +17,38 @@ class CardManager
             Card::class,
             locations: ItemLocation::getDefaults(),
         );
+        $this->game = $game;
     }
 
     public function initDb()
     {
         $this->cards->initDb();
+    }
+
+    public function reset()
+    {
+        $cards->moveAllItemsInLocation(null, 'deck');
+        $cards->shuffle('deck');
+    }
+
+    public function deal()
+    {
+        $player_ids = array_keys($this->game->loadPlayersBasicInfos());
+        $cards = $this->cards;
+
+        $discard = $cards->pickItem('deck', 'discard');
+        while ($discard->rank < 5 || $discard->rank > 10)
+            $discard = $cards->pickItem('deck', 'discard');
+        $discards = $cards->getItemsInLocation('discard')->values();
+
+        foreach ($player_ids as $player_id) {
+            $hand = $cards->pickItems(5, 'deck', ['hand', (int)$player_id])->values();
+            $this->game->bga->notify->player((int)$player_id, 'newHand', '', [
+                'deck' => $cards->countItemsInLocation('deck'),
+                'discards' => $discards,
+                'hand' => $hand
+                ]);
+        }
     }
 
     public function setup()
@@ -47,6 +74,5 @@ class CardManager
             'rank' => 15
         ];
         $this->cards->createItems($cards);
-        $this->cards->shuffle('deck');
     }
 }

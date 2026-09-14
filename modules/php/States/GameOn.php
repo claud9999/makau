@@ -131,7 +131,11 @@ class GameOn extends GameState
             return null;
         }
 
-        extract($this->bga->globals->getAll('draw', 'skip', 'suit_demand', 'rank_demand', 'last_jack'));
+        $draw = $globals->get('draw');
+        $skip = $globals->get('skip');
+        $suit_demand = $globals->get('suit_demand');
+        $rank_demand = $globals->get('rank_demand');
+        $last_jack = $globals->get('last_jack');
 
         for ($i = 0; $i < count($cards); $i++) {
             $card = $cards[$i];

@@ -27,6 +27,12 @@ class NewHand {
     }
 }
 
+class NextPlayer {
+    constructor(game, bga) {
+        this.game = game;
+        this.bga = bga;
+    }
+}
 
 export class Game {
     constructor(bga) {
@@ -327,10 +333,11 @@ export class Game {
         }
     }
 
-    async notif_NewHand(args) {
+    async notif_newHand(args) {
         // We received a new full hand of cards.
         await this.hand.removeAll();
         await this.hand.addCards(Array.from(Object.values(args.hand)));
+        await this.discard.removeAll();
         await this.discard.addCards(Array.from(Object.values(args.discards)));
         this.active_player_no = args.active_player_no;
         this.skip_count = 0;
@@ -342,7 +349,7 @@ export class Game {
         this.setPlayOptions();
     }
 
-    async notif_DrawCards(args) {
+    async notif_Deal(args) {
         if (args._private) {
             await this.hand.addCards(args._private.cards);
         }
@@ -364,8 +371,6 @@ export class Game {
     async notif_NextPlayer(args) {
         this.active_player_no = args.active_player_no;
         this.drew = 0;
-        this.draw = args.draw;
-        this.skip = args.skip;
     }
 
     async notif_PlayCards(args) {

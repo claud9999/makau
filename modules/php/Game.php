@@ -73,21 +73,33 @@ class Game extends \Bga\GameFramework\Table
             }
         }
 
-        extract($globals->getAll('draw', 'skip', 'suit_demand', 'rank_demand', 'last_jack', 'active_player_no', 'drew'));
+        $args['draw'] = $globals->get('draw');
+        $args['skip'] = $globals->get('skip');
+        $args['suit_demand'] = $globals->get('suit_demand');
+        $args['rank_demand'] = $globals->get('rank_demand');
+        $args['last_jack'] = $globals->get('last_jack');
+        $args['active_player_no'] = $globals->get('active_player_no');
+        $args['drew'] = $globals->get('drew');
 
         $args['deck'] = $cards->countItemsInLocation('deck');
         $args['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
         $args['discards'] = $cards->getItemsInLocation('discard')->values();
-        $args['draw'] = $draw;
-        $args['skip'] = $skip;
-        $args['suit_demand'] = $suit_demand;
-        $args['rank_demand'] = $rank_demand;
-        $args['last_jack'] = $last_jack;
-        $args['active_player_no'] = $active_player_no;
-        $args['drew'] = $drew;
-
 
         return $args;
+    }
+
+    public function reset() {
+        $globals = $this->bga->globals;
+
+        $globals->set('active_player_no', 1);
+        $globals->set('drew', 0);
+        $globals->set('suit_demand', 0);
+        $globals->set('rank_demand', 0);
+        $globals->set('last_jack', 0);
+        $globals->set("draw", 0);
+        $globals->set("skip", 0);
+
+        $this->cardManager->deal();
     }
 
     protected function setupNewGame($players, $options = [])
@@ -117,6 +129,8 @@ class Game extends \Bga\GameFramework\Table
 
         $this->reattributeColorsBasedOnPreferences($players, $gameinfos["player_colors"]);
         $this->reloadPlayersBasicInfos();
+
+        $this->reset();
 
         return NewHand::class;
     }
