@@ -382,6 +382,7 @@ export class Game {
         } else {
             this.updateOtherPlayerHandCount(args);
         }
+        this.draw = 0;
     }
 
     async notif_NextPlayer(args) {
