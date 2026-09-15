@@ -28,7 +28,6 @@ class NextPlayer extends GameState
 
     function onEnteringState()
     {
-        $player_count = $this->game->getPlayerCount();
         $active_player_no = $this->bga->globals->get('active_player_no');
         $active_player_no++;
         if ($active_player_no > $this->game->getPlayerCount()) $active_player_no = 1;

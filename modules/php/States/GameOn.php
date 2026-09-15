@@ -30,18 +30,18 @@ class GameOn extends GameState
     #[PossibleAction]
     public function actPass(int $currentPlayerId)
     {
-        if ($this->game->getPlayerNoById($currentPlayerId) != $this->bga->globals->get('active_player_no'))
+        $globals = $this->bga->globals;
+
+        if ($this->game->getPlayerNoById($currentPlayerId) != $globals->get('active_player_no'))
             return null;
 
-        // I have more skips to skip
-        if ($this->bga->globals->get('skip_' . $currentPlayerId) > 0)
-            $this->bga->globals->set('skip_' . $currentPlayerId, $this->bga->globals->get('skip_' . $currentPlayerId) - 1);
+        $skip = $globals->get('skip');
+        $skip += $globals->get("skip_{$currentPlayerId}");
 
-        // first skip
-        if ($this->bga->globals->get('skip') > 0) {
-            $this->bga->globals->set('skip_' . $currentPlayerId, $this->bga->globals->get('skip') - 1);
-            $this->bga->globals->set('skip', 0);
-        }
+        // I have more skips to skip
+        if ($skip > 0)
+            $globals->set("skip_{$currentPlayerId}", $skip - 1);
+            $globals->set('skip', 0);
 
         $this->game->notify->all(
             'Pass',
@@ -67,14 +67,14 @@ class GameOn extends GameState
 
         if ($globals->get('drew')) return; // can only draw once
         $nextplayer = false;
-        $draw_count = $globals->get('draw_' . $currentPlayerId);
-        if ($draw_count == 0) $draw_count = 1;
+        $draw = $globals->get('draw');
+        if ($draw == 0) $draw = 1;
         else $nextplayer = true;
 
-        $drawnCards = $cards->pickItems($draw_count, 'deck', ['hand', $currentPlayerId])->values();
+        $drawnCards = $cards->pickItems($draw, 'deck', ['hand', $currentPlayerId])->values();
 
-        $globals->set('draw_count', 0);
-        $globals->set('drew', $draw_count);
+        $globals->set('draw', 0);
+        $globals->set('drew', $draw);
 
         $game->notify->all(
             'DrawCards',
@@ -83,6 +83,7 @@ class GameOn extends GameState
                 'deck' => $cards->countItemsInLocation('deck'),
                 'player_name' => $game->getPlayerNameById($currentPlayerId),
                 'player_ids' => [$currentPlayerId],
+                'drew' => $draw,
                 "hand_{$currentPlayerId}" => $cards->countItemsInLocation(['hand', $currentPlayerId]),
                 '_private' => [
                     $currentPlayerId => [

@@ -342,8 +342,8 @@ export class Game {
         await this.discard.removeAll();
         await this.discard.addCards(Array.from(Object.values(args.discards)));
         this.active_player_no = args.active_player_no;
-        this.skip_count = 0;
-        this.draw_count = 0;
+        this.skip = 0;
+        this.draw = 0;
         this.drew = 0;
         this.deck.setCardNumber(args.deck);
 
@@ -356,7 +356,7 @@ export class Game {
             await this.hand.addCards(args._private.cards);
         }
         this.drew = 0;
-        this.draw_count = 0;
+        this.draw = 0;
         this.deck.setCardNumber(args.deck);
 
         this.updateOtherPlayerHandCount(args);
@@ -364,8 +364,11 @@ export class Game {
     }
 
     async notif_Pass(args) {
-        if (this[`skip_${args.player_id}`] > 0) {
-            this[`skip_${args.player_id}`] = this.skip - 1;
+        let skip = this.skip;
+        skip += this[`skip_${args.player_id}`];
+
+        if (skip > 0) {
+            this[`skip_${args.player_id}`] = skip - 1;
             this.skip = 0;
         }
     }
