@@ -270,7 +270,7 @@ export class Game {
                 selectableCards = this.getPlayableCards(topDiscard, handCards);
 
                 if (selectableCards.length < 1) {
-                    this.bga.statusBar.setTitle(_('You must draw a card.'));
+                    this.bga.statusBar.setTitle(_(`You must draw ${this.draw} cards.`));
                     this.hand.setSelectionMode('none');
                     this.drawButton.disabled = false;
                 } else {

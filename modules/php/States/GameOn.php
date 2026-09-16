@@ -39,9 +39,10 @@ class GameOn extends GameState
         $skip += $globals->get("skip_{$currentPlayerId}");
 
         // I have more skips to skip
-        if ($skip > 0)
+        if ($skip > 0) {
             $globals->set("skip_{$currentPlayerId}", $skip - 1);
             $globals->set('skip', 0);
+        }
 
         $this->game->notify->all(
             'Pass',
@@ -110,7 +111,9 @@ class GameOn extends GameState
         $top = $cards->getItemOnTop('discard');
         $playedCards = [];
 
-        $playedCards = $cards->getItemsByIds($cardIds)->values();
+        for($i = 0; $i < count($cardIds); $i++) {
+            $playedCards[] = $cards->getItemById($cardIds[$i]);
+        }
 
         $playableCards = $this->getPlayableCards($top, $playedCards, $currentPlayerId);
         
@@ -143,7 +146,10 @@ class GameOn extends GameState
         }
 
         // valid play, move the cards to the discard pile
-        $cards->moveItems($playedCards, 'discard');
+        // one at a time to maintain order
+        for ($i = 0; $i < count($playedCards); $i++) {
+            $cards->moveItem($playedCards[$i], 'discard');
+        }
 
         $game->notify->all('PlayCards', '', [
             'cards' => $playedCards,
