@@ -364,13 +364,14 @@ export class Game {
     }
 
     async notif_Pass(args) {
-        let skip = this.skip;
-        skip += this[`skip_${args.player_id}`];
+        if (this.bga.players.getCurrentPlayerNo() == this.active_player_no) {
+            let skip = this.skip + this[`skip_${args.player_id}`];
 
-        if (skip > 0) {
-            this[`skip_${args.player_id}`] = skip - 1;
-            this.skip = 0;
+            if (skip > 0) {
+                this[`skip_${args.player_id}`] = skip - 1;
+            }
         }
+        this.skip = 0;
     }
 
     async notif_DrawCards(args) {
@@ -392,7 +393,7 @@ export class Game {
 
     async notif_PlayCards(args) {
         this.discard.addCards(Array.from(Object.values(args.cards)));
-        
+
         this.draw = args.draw;
         this.skip = args.skip;
         this.suit_demand = args.suit_demand;

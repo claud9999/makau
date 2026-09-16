@@ -31,8 +31,9 @@ class GameOn extends GameState
     public function actPass(int $currentPlayerId)
     {
         $globals = $this->bga->globals;
+        $game = $this->game;
 
-        if ($this->game->getPlayerNoById($currentPlayerId) != $globals->get('active_player_no'))
+        if ($game->getPlayerNoById($currentPlayerId) != $globals->get('active_player_no'))
             return null;
 
         $skip = $globals->get('skip');
@@ -44,11 +45,12 @@ class GameOn extends GameState
             $globals->set('skip', 0);
         }
 
-        $this->game->notify->all(
+        $game->notify->all(
             'Pass',
             clienttranslate('${player_name} passes'),
             [
-                'player_name' => $this->game->getPlayerNameById($currentPlayerId),
+                'player_id' => $currentPlayerId,
+                'player_name' => $game->getPlayerNameById($currentPlayerId),
                 'player_ids' => [$currentPlayerId],
             ]
         );
