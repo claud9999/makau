@@ -224,8 +224,8 @@ export class Game {
                     matchingCards.push(card);
             } else {
                 if (card.rank == 12 // queen
-                    || card.suit == cardToMatch.suit
-                    || card.rank == cardToMatch.rank
+                    || card.suit == top.suit
+                    || card.rank == top.rank
                     || top.rank == 12 // queen
                 )
                     matchingCards.push(card);
@@ -244,70 +244,61 @@ export class Game {
         this.playButton.disabled = true;
         this.drawButton.disabled = true;
         this.makauButton.disabled = true; // TODO: compute and enable only when it can be said
+        let selectableCards = [];
 
         if (this.bga.players.getCurrentPlayerNo() == this.active_player_no) {
-            let selectableCards = [];
+            this.passButton.disabled = false;
             if (this.skip_prev > 0) {
                 this.bga.statusBar.setTitle(_('You must skip your turn.'));
-                this.hand.setSelectionMode('none');
-                this.passButton.disabled = false;
             } else if (this.skip > 0) {
                 selectableCards = this.getPlayableCards(topDiscard, handCards);
 
                 if (selectableCards.length < 1) {
                     this.bga.statusBar.setTitle(_('You must skip your turn.'));
-                    this.hand.setSelectionMode('none');
-                    this.passButton.disabled = false;
                 } else {
                     this.bga.statusBar.setTitle(_('You can play a skip card.'));
 
                     this.playButton.disabled = false;
                     this.drawButton.disabled = true;
-
-                    this.hand.setSelectionMode('multiple', selectableCards);
                 }
             } else if (this.draw > 0) {
                 selectableCards = this.getPlayableCards(topDiscard, handCards);
 
                 if (selectableCards.length < 1) {
                     this.bga.statusBar.setTitle(_(`You must draw ${this.draw} cards.`));
-                    this.hand.setSelectionMode('none');
                     this.drawButton.disabled = false;
+                    this.passButton.disabled = true;
                 } else {
                     this.bga.statusBar.setTitle(_('You can add to the draw.'));
 
                     this.playButton.disabled = false;
                     this.drawButton.disabled = true;
-
-                    this.hand.setSelectionMode('multiple', selectableCards);
+                    this.passButton.disabled = true;
                 }
             } else {
                 this.drawButton.disabled = this.drew;
-                this.passButton.disabled = false;
-                for (let i = 0; i < handCards.length; i++) {
-                    let card = handCards[i];
-                    if (card.suit == topDiscard.suit || card.rank == topDiscard.rank || card.rank == 12 || topDiscard.rank == 12) {
-                        selectableCards.push(card);
-                    }
-                }
+
+                selectableCards = this.getPlayableCards(topDiscard, handCards);
+
                 if (selectableCards.length < 1) {
-                    this.bga.statusBar.setTitle(_('You have no playable cards'));
-                    this.hand.setSelectionMode('none');
+                    this.bga.statusBar.setTitle(_('You have no playable cards.'));
                 } else {
                     this.bga.statusBar.setTitle(_('It\'s your turn...'));
 
                     this.playButton.disabled = false;
-
-                    this.hand.setSelectionMode('multiple', selectableCards);
                 }
             }
         } else {
-            this.hand.setSelectionMode('none');
 
+            /*            for (let i = 0; i < this.hand.getCards().length; i++) {
+                            let elt = this.hand.getCardElement(card);
+                            elt.classList.add('bga-cards_unselectable-card');
+                        }*/
             this.bga.statusBar.setTitle(_("${active_player_no} is playing now."), {
                 "active_player_no": this.bga.players.getPlayerByNo(this.active_player_no).name,
             });
         }
+        this.hand.setSelectionMode('multiple', selectableCards);
     }
 
     setupNotifications() {
