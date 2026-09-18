@@ -8,11 +8,19 @@ class GameOn {
     }
 
     onEnteringState(_args, isCurrentPlayerActive) {
-        this.game.playButton = this.bga.statusBar.addActionButton(_('Play'), () =>
-            this.bga.actions.performAction('actPlay', { cardIds: this.game.hand.selectedCards.map((card) => card.id) }));
-        this.game.drawButton = this.bga.statusBar.addActionButton(_('Draw'), () => this.bga.actions.performAction('actDraw'));
+        this.game.playButton = this.bga.statusBar.addActionButton(_('Play'), () => {
+            this.bga.actions.performAction(
+                'actPlay', {
+                cardIds: this.game.play.getCards().map((card) => card.id)
+            });
+        });
+        this.game.drawButton = this.bga.statusBar.addActionButton(_('Draw'), () => {
+            this.game.hand.addCards(this.game.play.getCards());
+            this.bga.actions.performAction('actDraw');
+        });
         this.game.passButton = this.bga.statusBar.addActionButton(_('Pass'), () => {
-            this.bga.actions.performAction('actPass')
+            this.game.hand.addCards(this.game.play.getCards());
+            this.bga.actions.performAction('actPass');
         });
         this.game.makauButton = this.bga.statusBar.addActionButton(_('Makau'), () => this.bga.actions.performAction('actMakau'));
 
@@ -92,8 +100,12 @@ export class Game {
                                 <div id="deck"></div>
                             </div>
                             <div id="discard_block" bgcolor="yellow">
-                                <b id="discard_label">${_("Discard pile")}</b>
+                                <b align="left" id="discard_label">${_("Discard pile")}</b>
                                 <div id="discard"></div>
+                            </div>
+                            <div id="play_block">
+                                <b id="play_label"></b>
+                                <div id="play"></div>
                             </div>
                         </div>
                         <div id="otherplayers" class="player_blocks">
@@ -187,11 +199,23 @@ export class Game {
         );
         this.hand.addCards(args.hand);
 
+        this.play = new BgaCards.HandStock(
+            this.cardsManager,
+            document.getElementById("play"),
+            {
+                fanShaped: false,
+                cardOverlap: 75
+            }
+        );
+
+        this.play.setSelectionMode('single');
+
         this.discard = new BgaCards.HandStock(
             this.cardsManager,
             document.getElementById("discard"),
             {
                 fanShaped: false,
+                cardOverlap: 75
             }
         );
 
@@ -199,7 +223,14 @@ export class Game {
 
         this.hand.onCardClick = (card) => {
             if (args.gamestate.name != "GameOn") this.hand.unselectAll();
-        };
+            this.play.addCard(card);
+            this.setPlayOptions();
+        }
+
+        this.play.onCardClick = (card) => {
+            this.hand.addCard(card);
+            this.setPlayOptions();
+        }
 
         // Setup game notifications to handle (see "setupNotifications" method below)
         this.setupNotifications();
@@ -237,8 +268,9 @@ export class Game {
 
     setPlayOptions() {
         let handCards = this.hand.getCards();
-        let discards = this.discard.getCards();
-        let topDiscard = discards[discards.length - 1];
+        let topcards = this.play.getCards();
+        if (topcards.length == 0) topcards = this.discard.getCards();
+        let top = topcards[topcards.length - 1];
 
         this.passButton.disabled = true;
         this.playButton.disabled = true;
@@ -251,7 +283,7 @@ export class Game {
             if (this.skip_prev > 0) {
                 this.bga.statusBar.setTitle(_('You must skip your turn.'));
             } else if (this.skip > 0) {
-                selectableCards = this.getPlayableCards(topDiscard, handCards);
+                selectableCards = this.getPlayableCards(top, handCards);
 
                 if (selectableCards.length < 1) {
                     this.bga.statusBar.setTitle(_('You must skip your turn.'));
@@ -262,7 +294,7 @@ export class Game {
                     this.drawButton.disabled = true;
                 }
             } else if (this.draw > 0) {
-                selectableCards = this.getPlayableCards(topDiscard, handCards);
+                selectableCards = this.getPlayableCards(top, handCards);
 
                 if (selectableCards.length < 1) {
                     this.bga.statusBar.setTitle(_(`You must draw ${this.draw} cards.`));
@@ -278,27 +310,25 @@ export class Game {
             } else {
                 this.drawButton.disabled = this.drew;
 
-                selectableCards = this.getPlayableCards(topDiscard, handCards);
+                if (this.play.getCards().length < 1) {
+                    selectableCards = this.getPlayableCards(top, handCards);
 
-                if (selectableCards.length < 1) {
+                    if (selectableCards.length < 1)
                     this.bga.statusBar.setTitle(_('You have no playable cards.'));
+                else
+                    this.bga.statusBar.setTitle(_('Pick cards to play.'));
                 } else {
-                    this.bga.statusBar.setTitle(_('It\'s your turn...'));
+                    this.bga.statusBar.setTitle(_('Click play when you\'re done...'));
 
                     this.playButton.disabled = false;
                 }
             }
         } else {
-
-            /*            for (let i = 0; i < this.hand.getCards().length; i++) {
-                            let elt = this.hand.getCardElement(card);
-                            elt.classList.add('bga-cards_unselectable-card');
-                        }*/
             this.bga.statusBar.setTitle(_("${active_player_no} is playing now."), {
                 "active_player_no": this.bga.players.getPlayerByNo(this.active_player_no).name,
             });
         }
-        this.hand.setSelectionMode('multiple', selectableCards);
+        this.hand.setSelectionMode('single', selectableCards);
     }
 
     setupNotifications() {
@@ -380,6 +410,7 @@ export class Game {
     async notif_NextPlayer(args) {
         this.active_player_no = args.active_player_no;
         this.drew = 0;
+        this.setPlayOptions();
     }
 
     async notif_PlayCards(args) {

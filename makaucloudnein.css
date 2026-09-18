@@ -39,15 +39,21 @@
 }
 
 #deck_block {
-  width: var(--h-card-width);
+  width: 20%;
   height: calc(var(--h-card-height) * 1.2);
   float: left;
 }
 
 #discard_block {
-  width: calc(100% - var(--h-card-width) - 10px);
+  width: 50%;
   height: calc(var(--h-card-height) * 1.2);
   float: left;
+}
+
+#play_block {
+  width: 30%;
+  height: calc(var(--h-card-height) * 1.2);
+  float: right;
 }
 
 .player_blocks {
