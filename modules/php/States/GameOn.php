@@ -134,6 +134,7 @@ class GameOn extends GameState
         $suit_demand = $globals->get('suit_demand');
         $rank_demand = $globals->get('rank_demand');
         $last_jack = $globals->get('last_jack');
+        $jack = false;
 
         for ($i = 0; $i < count($playedCards); $i++) {
             $card = $playedCards[$i];
@@ -144,6 +145,9 @@ class GameOn extends GameState
             if ($card->rank == 4) {
                 $skip += 1;
                 $globals->set('skip', $skip);
+            }
+            if ($card->rank == 11) { // J demands rank
+                $jack = true;
             }
         }
 
@@ -163,6 +167,8 @@ class GameOn extends GameState
             'player_ids' => [$currentPlayerId],
             "hand_{$currentPlayerId}" => $cards->countItemsInLocation(['hand', $currentPlayerId]),
         ]);
+
+        if ($jack) return PickRank::class;
 
         return NextPlayer::class;
     }

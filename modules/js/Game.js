@@ -8,22 +8,6 @@ class GameOn {
     }
 
     onEnteringState(_args, isCurrentPlayerActive) {
-        this.game.playButton = this.bga.statusBar.addActionButton(_('Play'), () => {
-            this.bga.actions.performAction(
-                'actPlay', {
-                cardIds: this.game.play.getCards().map((card) => card.id)
-            });
-        });
-        this.game.drawButton = this.bga.statusBar.addActionButton(_('Draw'), () => {
-            this.game.hand.addCards(this.game.play.getCards());
-            this.bga.actions.performAction('actDraw');
-        });
-        this.game.passButton = this.bga.statusBar.addActionButton(_('Pass'), () => {
-            this.game.hand.addCards(this.game.play.getCards());
-            this.bga.actions.performAction('actPass');
-        });
-        this.game.makauButton = this.bga.statusBar.addActionButton(_('Makau'), () => this.bga.actions.performAction('actMakau'));
-
         this.game.setPlayOptions();
     }
 }
@@ -42,6 +26,13 @@ class NextPlayer {
     }
 }
 
+class PickRank {
+    constructor(game, bga) {
+        this.game = game;
+        this.bga = bga;
+    }
+}
+
 export class Game {
     constructor(bga) {
         console.log('makaucloudnein constructor');
@@ -50,6 +41,7 @@ export class Game {
         this.GameOn = new GameOn(this, bga);
         this.bga.states.register('NewHand', new NewHand(this, bga));
         this.bga.states.register('GameOn', new GameOn(this, bga));
+        this.bga.states.register('PickRank', new PickRank(this, bga));
 
         this.bga.states.logger = console.log;
         this.drew = 0;
@@ -238,6 +230,28 @@ export class Game {
         console.log("Ending game setup");
     }
 
+    buttonsMakau() {
+        this.makauButton = this.bga.statusBar.addActionButton(_('Makau'), () => this.bga.actions.performAction('actMakau'));
+    }
+
+    buttonsGameOn() {
+        this.playButton = this.bga.statusBar.addActionButton(_('Play'), () => {
+            this.bga.actions.performAction(
+                'actPlay', {
+                cardIds: this.play.getCards().map((card) => card.id)
+            });
+        });
+        this.drawButton = this.bga.statusBar.addActionButton(_('Draw'), () => {
+            this.hand.addCards(this.game.play.getCards());
+            this.bga.actions.performAction('actDraw');
+        });
+        this.passButton = this.bga.statusBar.addActionButton(_('Pass'), () => {
+            this.hand.addCards(this.game.play.getCards());
+            this.bga.actions.performAction('actPass');
+        });
+        this.buttonsMakau();
+    }
+
     // Should match getPlayableCards in States/GameOn.php
     getPlayableCards(top, cards) {
         let matchingCards = [];
@@ -267,19 +281,17 @@ export class Game {
     }
 
     setPlayOptions() {
+        this.bga.statusBar.removeActionButtons();
+
         let handCards = this.hand.getCards();
         let topcards = this.play.getCards();
         if (topcards.length == 0) topcards = this.discard.getCards();
         let top = topcards[topcards.length - 1];
 
-        this.passButton.disabled = true;
-        this.playButton.disabled = true;
-        this.drawButton.disabled = true;
-        this.makauButton.disabled = true; // TODO: compute and enable only when it can be said
         let selectableCards = [];
 
         if (this.bga.players.getCurrentPlayerNo() == this.active_player_no) {
-            this.passButton.disabled = false;
+            this.buttonsGameOn();
             if (this.skip_prev > 0) {
                 this.bga.statusBar.setTitle(_('You must skip your turn.'));
             } else if (this.skip > 0) {
@@ -323,6 +335,7 @@ export class Game {
                 }
             }
         } else {
+            this.buttonsMakau();
             this.bga.statusBar.setTitle(_("${active_player_no} is playing now."), {
                 "active_player_no": this.bga.players.getPlayerByNo(this.active_player_no).name,
             });
@@ -422,6 +435,26 @@ export class Game {
         this.last_jack = args.last_jack;
 
         this.updateOtherPlayerHandCount(args);
+    }
+
+    async notif_PickRank(args) {
+        this.bga.statusBar.removeActionButtons();
+        this.bga.statusBar.setTitle('Select a rank.');
+        this.rankButtons = [];
+        for (let i = 5; i < 11; i++) {
+            this.rankButtons[i] = this.bga.statusBar.addActionButton(_(`{i}`), () => {
+                this.bga.actions.performAction(
+                    'actPick', {
+                    rank: i
+                });
+            });
+        }
+    }
+
+    async notif_RankDemand(args) {
+        this.bga.statusBar.removeActionButtons();
+        this.rank_demand = args.rank;
+        this.last_jack = $player_id;
     }
 
     async notif_InvalidPlay(args) {
