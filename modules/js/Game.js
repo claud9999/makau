@@ -281,6 +281,7 @@ export class Game {
     }
 
     setPlayOptions() {
+        let currentPlayerId = this.bga.players.getCurrentPlayerId();
         this.bga.statusBar.removeActionButtons();
 
         let handCards = this.hand.getCards();
@@ -288,13 +289,14 @@ export class Game {
         if (topcards.length == 0) topcards = this.discard.getCards();
         let top = topcards[topcards.length - 1];
 
+        let skip = this[`skip_{currentPlayerId}`];
+        let draw = this[`draw_{currentPlayerId}`];
+
         let selectableCards = [];
 
         if (this.bga.players.getCurrentPlayerNo() == this.active_player_no) {
             this.buttonsGameOn();
-            if (this.skip_prev > 0) {
-                this.bga.statusBar.setTitle(_('You must skip your turn.'));
-            } else if (this.skip > 0) {
+            if (skip > 0) {
                 selectableCards = this.getPlayableCards(top, handCards);
 
                 if (selectableCards.length < 1) {
@@ -305,11 +307,11 @@ export class Game {
                     this.playButton.disabled = false;
                     this.drawButton.disabled = true;
                 }
-            } else if (this.draw > 0) {
+            } else if (draw > 0) {
                 selectableCards = this.getPlayableCards(top, handCards);
 
                 if (selectableCards.length < 1) {
-                    this.bga.statusBar.setTitle(_(`You must draw ${this.draw} cards.`));
+                    this.bga.statusBar.setTitle(_(`You must draw ${draw} cards.`));
                     this.drawButton.disabled = false;
                     this.passButton.disabled = true;
                 } else {
@@ -336,8 +338,8 @@ export class Game {
             }
         } else {
             this.buttonsMakau();
-            this.bga.statusBar.setTitle(_("${active_player_no} is playing now."), {
-                "active_player_no": this.bga.players.getPlayerByNo(this.active_player_no).name,
+            this.bga.statusBar.setTitle(_("${active_player} is playing now."), {
+                "active_player": this.bga.players.getPlayerByNo(this.active_player_no).name,
             });
         }
         this.hand.setSelectionMode('single', selectableCards);
@@ -427,6 +429,7 @@ export class Game {
 
     async notif_PlayCards(args) {
         this.discard.addCards(Array.from(Object.values(args.cards)));
+        let nextPlayer = 
 
         this.draw = args.draw;
         this.skip = args.skip;

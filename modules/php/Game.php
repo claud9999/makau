@@ -59,13 +59,13 @@ class Game extends \Bga\GameFramework\Table
         $globals = $this->bga->globals;
         $args = [];
 
-        $args["player_ids"] = array_keys($this->getCollectionFromDb(
-            "SELECT `player_id` AS `id` FROM `player`"
-        ));
+        $player_ids = array_keys($this->game->loadPlayersBasicInfos());
+        $args['player_ids'] = $player_ids;
 
-        for ($i = 0; $i < count($args["player_ids"]); $i++) {
-            $player_id = $args["player_ids"][$i];
+        for ($i = 0; $i < count($player_ids); $i++) {
+            $player_id = $player_ids[$i];
             $args["skip_{$player_id}"] = $globals->get("skip_{$player_id}");
+            $args["draw_{$player_id}"] = $globals->get("draw_{$player_id}");
             if ($player_id == $currentPlayerId) {
                 $args['my_player_no'] = $i;
             } else {
@@ -88,16 +88,22 @@ class Game extends \Bga\GameFramework\Table
         return $args;
     }
 
-    public function reset() {
+    public function reset()
+    {
         $globals = $this->bga->globals;
+        $player_ids = array_keys($this->game->loadPlayersBasicInfos());
+
+        for ($i = 0; $i < count($player_ids); $i++) {
+            $player_id = $player_ids[$i];
+            $globals->set("draw_{$player_id}", 0);
+            $globals->set("skip_{$player_id}", 0);
+        }
 
         $globals->set('active_player_no', 1);
         $globals->set('drew', 0);
         $globals->set('suit_demand', 0);
         $globals->set('rank_demand', 0);
         $globals->set('last_jack', 0);
-        $globals->set("draw", 0);
-        $globals->set("skip", 0);
 
         $this->cardManager->deal();
     }

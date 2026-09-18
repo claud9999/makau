@@ -129,8 +129,10 @@ class GameOn extends GameState
             return null;
         }
 
-        $draw = $globals->get('draw');
-        $skip = $globals->get('skip');
+        $draw = $globals->get("draw_{$currentPlayerId}");
+        $next_draw = false;
+        $skip = $globals->get("skip_{$currentPlayerId}");
+        $next_skip = false;
         $suit_demand = $globals->get('suit_demand');
         $rank_demand = $globals->get('rank_demand');
         $last_jack = $globals->get('last_jack');
@@ -140,11 +142,11 @@ class GameOn extends GameState
             $card = $playedCards[$i];
             if ($card->rank == 2 || $card->rank == 3) {
                 $draw += $card->rank;
-                $globals->set('draw', $draw);
+                $next_draw = true;
             }
             if ($card->rank == 4) {
                 $skip += 1;
-                $globals->set('skip', $skip);
+                $next_skip = true;
             }
             if ($card->rank == 11) { // J demands rank
                 $jack = true;

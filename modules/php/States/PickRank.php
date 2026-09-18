@@ -49,7 +49,7 @@ class PickRank extends GameState
         $game->bga->notify->all('RankDemand', '', [
             'player_id' => $currentPlayerId,
             'rank' => $rank
-        ])
+        ]);
         
         return NextPlayer::class;
     }
