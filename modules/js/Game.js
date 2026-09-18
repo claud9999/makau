@@ -309,14 +309,13 @@ export class Game {
                 }
             } else {
                 this.drawButton.disabled = this.drew;
+                selectableCards = this.getPlayableCards(top, handCards);
 
                 if (this.play.getCards().length < 1) {
-                    selectableCards = this.getPlayableCards(top, handCards);
-
                     if (selectableCards.length < 1)
-                    this.bga.statusBar.setTitle(_('You have no playable cards.'));
-                else
-                    this.bga.statusBar.setTitle(_('Pick cards to play.'));
+                        this.bga.statusBar.setTitle(_('You have no playable cards.'));
+                    else
+                        this.bga.statusBar.setTitle(_('Pick cards to play.'));
                 } else {
                     this.bga.statusBar.setTitle(_('Click play when you\'re done...'));
 

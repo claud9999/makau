@@ -4,6 +4,8 @@
 * disable unplayable cards (esp when not the active player)
 * tooltips/graphics to indicate special cards
 * enforce rules
-* mark card order when selecting multiple cards
-* maintain order in discard transfer
 * test 3 and 4 players
+
+# BUGS
+
+* only allow one sort of demand (draw, skip, suit, or rank)
