@@ -73,8 +73,11 @@ class Game extends \Bga\GameFramework\Table
             }
         }
 
+        $args['player_id'] = $currentPlayerId;
         $args['draw'] = $globals->get('draw');
         $args['skip'] = $globals->get('skip');
+        $args["draw_{$currentPlayerId}"] = $globals->get("draw_{$currentPlayerId}");
+        $args["skip_{$currentPlayerId}"] = $globals->get("skip_{$currentPlayerId}");
         $args['suit_demand'] = $globals->get('suit_demand');
         $args['rank_demand'] = $globals->get('rank_demand');
         $args['last_jack'] = $globals->get('last_jack');
@@ -137,5 +140,16 @@ class Game extends \Bga\GameFramework\Table
         $this->reloadPlayersBasicInfos();
 
         return NewHand::class;
+    }
+
+    public function err($currentPlayerId, $message)
+    {
+        $this->notify->player(
+            $currentPlayerId,
+            'InvalidPlay',
+            $message,
+            []
+        );
+        return null;
     }
 }

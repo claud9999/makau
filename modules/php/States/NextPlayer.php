@@ -28,14 +28,24 @@ class NextPlayer extends GameState
 
     function onEnteringState()
     {
-        $active_player_no = $this->bga->globals->get('active_player_no');
+        $globals = $this->bga->globals;
+        $game = $this->game;
+
+        $active_player_no = $globals->get('active_player_no');
         $active_player_no++;
-        if ($active_player_no > $this->game->getPlayerCount()) $active_player_no = 1;
+        if ($active_player_no > $game->getPlayerCount()) $active_player_no = 1;
 
-        $this->bga->globals->set('active_player_no', $active_player_no);
-        $this->bga->globals->set('drew', 0);
+        $player_id = $game->getPlayerIdByNo($active_player_no);
+        $last_jack = $globals->get('last_jack');
+        if ($player_id == $last_jack) {
+            $globals->set('last_jack', 0);
+            $globals->set('rank_demand', 0);
+        }
 
-        $this->game->bga->notify->all('NextPlayer', '', [
+        $globals->set('active_player_no', $active_player_no);
+        $globals->set('drew', 0);
+
+        $game->bga->notify->all('NextPlayer', '', [
             'active_player_no' => $active_player_no,
         ]);
 

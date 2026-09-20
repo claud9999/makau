@@ -34,10 +34,9 @@ class GameOn extends GameState
         $game = $this->game;
 
         if ($game->getPlayerNoById($currentPlayerId) != $globals->get('active_player_no'))
-            return null;
+            return $game->err($currentPlayerId, 'can\'t pass');
 
-        $skip = $globals->get('skip');
-        $skip += $globals->get("skip_{$currentPlayerId}");
+        $skip = $globals->get("skip_{$currentPlayerId}") + $globals->get('skip');
 
         // I have more skips to skip
         if ($skip > 0) {
@@ -45,13 +44,23 @@ class GameOn extends GameState
             $globals->set('skip', 0);
         }
 
+        // carry draws forward
+        $draw = $globals->get("draw_{$currentPlayerId}") + $globals->get('draw');
+        if ($draw > 0) {
+            $globals->set("draw_{$currentPlayerId}", $draw);
+            $globals->set('draw', 0);
+        }
+
+        if (!$skip && $draw) return $game->err($currentPlayerId, 'can\'t pass when you have to draw');
+
         $game->notify->all(
             'Pass',
             clienttranslate('${player_name} passes'),
             [
                 'player_id' => $currentPlayerId,
                 'player_name' => $game->getPlayerNameById($currentPlayerId),
-                'player_ids' => [$currentPlayerId],
+                'skip' => $skip,
+                'draw' => $draw,
             ]
         );
 
@@ -65,18 +74,24 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
-        if ($game->getPlayerNoById($currentPlayerId) != $globals->get('active_player_no'))
-            return null;
+        if ($globals->get('skip') + $globals->get("skip_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'have to skip');
 
-        if ($globals->get('drew')) return; // can only draw once
-        $nextplayer = false;
-        $draw = $globals->get('draw');
-        if ($draw == 0) $draw = 1;
-        else $nextplayer = true;
+        if ($game->getPlayerNoById($currentPlayerId) != $globals->get('active_player_no'))
+            return $game->err($currentPlayerId, 'not your turn');
+
+        if ($globals->get('drew')) return $game->err($currentPlayerId, 'can only draw once');
+        $forcedDraw = false;
+        $draw = $globals->get("draw_{$currentPlayerId}") + $globals->get('draw');
+        if ($draw == 0) $draw = 10;
+        else $forcedDraw = true;
 
         $drawnCards = $cards->pickItems($draw, 'deck', ['hand', $currentPlayerId])->values();
 
-        $globals->set('draw', 0);
+        if ($forcedDraw > 0) {
+            $globals->set('draw', 0);
+            $globals->set("draw_{$currentPlayerId}", 0);
+        }
+
         $globals->set('drew', $draw);
 
         $game->notify->all(
@@ -96,7 +111,7 @@ class GameOn extends GameState
             ]
         );
 
-        if ($nextplayer) return NextPlayer::class; // when forced to draw, I am done
+        if ($forcedDraw) return NextPlayer::class; // when forced to draw, I am done
         return null;
     }
 
@@ -108,31 +123,30 @@ class GameOn extends GameState
         $cards = $game->cards;
 
         if ($game->getPlayerNoById($currentPlayerId) != $globals->get('active_player_no')) return null; // can only play before drawing
+        if ($globals->get("draw_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
+        if ($globals->get("skip_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
 
         $discards = $cards->getItemsInLocation('discard');
         $top = $cards->getItemOnTop('discard');
         $playedCards = [];
 
-        for($i = 0; $i < count($cardIds); $i++) {
+        for ($i = 0; $i < count($cardIds); $i++) {
             $playedCards[] = $cards->getItemById($cardIds[$i]);
         }
 
         $playableCards = $this->getPlayableCards($top, $playedCards, $currentPlayerId);
-        
+
         if (count($playableCards) < count($playedCards)) {
-            $game->notify->player(
+            return $game->err(
                 $currentPlayerId,
-                'InvalidPlay',
-                'You cannot play ' . $this->getCardName($playedCards[count($playableCards)]),
-                []
+                'You cannot play ' . $this->getCardName($playedCards[count($playableCards)])
             );
-            return null;
         }
 
-        $draw = $globals->get("draw_{$currentPlayerId}");
-        $next_draw = false;
-        $skip = $globals->get("skip_{$currentPlayerId}");
-        $next_skip = false;
+        $draw = $globals->get('draw');
+        $draw_add = false;
+        $skip = $globals->get('skip');
+        $skip_add = false;
         $suit_demand = $globals->get('suit_demand');
         $rank_demand = $globals->get('rank_demand');
         $last_jack = $globals->get('last_jack');
@@ -142,15 +156,25 @@ class GameOn extends GameState
             $card = $playedCards[$i];
             if ($card->rank == 2 || $card->rank == 3) {
                 $draw += $card->rank;
-                $next_draw = true;
+                $draw_add = true;
             }
             if ($card->rank == 4) {
                 $skip += 1;
-                $next_skip = true;
+                $skip_add = true;
             }
             if ($card->rank == 11) { // J demands rank
                 $jack = true;
             }
+        }
+
+        if ($draw > 0) {
+            if ($draw_add) $globals->set('draw', $draw);
+            else return $game->err($currentPlayerId, 'you must draw');
+        }
+
+        if ($skip > 0) {
+            if ($skip_add) $globals->set('skip', $skip);
+            else return $game->err($currentPlayerId, 'you must pass');
         }
 
         // valid play, move the cards to the discard pile
@@ -196,6 +220,7 @@ class GameOn extends GameState
     {
         $globals = $this->bga->globals;
         $matchingCards = [];
+        $rank_demand = $globals->get('rank_demand');
 
         for ($i = 0; $i < count($cards); $i++) {
             $card = $cards[$i];
@@ -211,6 +236,12 @@ class GameOn extends GameState
                 )
                     $matchingCards[] = $card;
                 $top = $card;
+            } else if ($rank_demand > 0) {
+                if (
+                    $card->rank == $rank_demand
+                    || $card->rank == 11 && $card->suit == $top->suit
+                )
+                    $matchingCards[] = $card;
             } else {
                 if (
                     $card->rank == 12 // queen

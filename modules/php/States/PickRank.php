@@ -33,24 +33,21 @@ class PickRank extends GameState
         $this->game->bga->notify->all('PickRank', '', [
             'active_player_no' => $active_player_no,
         ]);
-
-        return GameOn::class;
     }
 
     #[PossibleAction]
     public function actPick(int $rank, int $currentPlayerId)
     {
         $globals = $this->bga->globals;
-        $game = $this->game;
 
         $globals->set('rank_demand', $rank);
         $globals->set('last_jack', $currentPlayerId);
 
-        $game->bga->notify->all('RankDemand', '', [
-            'player_id' => $currentPlayerId,
-            'rank' => $rank
+        $this->game->bga->notify->all('RankDemand', '', [
+            'last_jack' => $currentPlayerId,
+            'rank_demand' => $rank,
         ]);
-        
+
         return NextPlayer::class;
     }
 

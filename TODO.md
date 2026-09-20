@@ -9,3 +9,14 @@
 # BUGS
 
 * only allow one sort of demand (draw, skip, suit, or rank)
+
+# scenarios
+
+## One
+Discard: 7H
+P1: hand is xxx, plays 2H 2S 4C
+P2: hand is xxx, 4H -- can't
+
+## Two
+Discard: 7H
+P1: hand is 9H, 3S, etc., draws 9S, can he play 9H, 9S, 3S or does he have to play 9S first since he just drew it?
