@@ -66,11 +66,7 @@ class Game extends \Bga\GameFramework\Table
             $player_id = $player_ids[$i];
             $args["skip_{$player_id}"] = $globals->get("skip_{$player_id}");
             $args["draw_{$player_id}"] = $globals->get("draw_{$player_id}");
-            if ($player_id == $currentPlayerId) {
-                $args['my_player_no'] = $i;
-            } else {
-                $args["hand_{$player_id}"] = $cards->countItemsInLocation(['hand', $player_id]);
-            }
+            $args["hand_{$player_id}"] = $cards->countItemsInLocation(['hand', $player_id]);
         }
 
         $args['player_id'] = $currentPlayerId;
@@ -81,7 +77,7 @@ class Game extends \Bga\GameFramework\Table
         $args['suit_demand'] = $globals->get('suit_demand');
         $args['rank_demand'] = $globals->get('rank_demand');
         $args['last_jack'] = $globals->get('last_jack');
-        $args['active_player_no'] = $globals->get('active_player_no');
+        $args['active_player_id'] = $globals->get('active_player_id');
         $args['drew'] = $globals->get('drew');
 
         $args['deck'] = $cards->countItemsInLocation('deck');
@@ -102,7 +98,7 @@ class Game extends \Bga\GameFramework\Table
             $globals->set("skip_{$player_id}", 0);
         }
 
-        $globals->set('active_player_no', 1);
+        $globals->set('active_player_id', $this->getPlayerIdByNo(1));
         $globals->set('drew', 0);
         $globals->set('suit_demand', 0);
         $globals->set('rank_demand', 0);

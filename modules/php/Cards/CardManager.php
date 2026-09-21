@@ -55,7 +55,7 @@ class CardManager
 
         foreach ($player_ids as $player_id) {
             $args['hand'] = $cards->pickItems(10, 'deck', ['hand', (int)$player_id])->values();
-            $this->game->bga->notify->player((int)$player_id, 'newHand', '', $args);
+            $this->game->bga->notify->player((int)$player_id, 'NewHand', '', $args);
         }
     }
 

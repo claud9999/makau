@@ -28,10 +28,10 @@ class PickRank extends GameState
 
     function onEnteringState()
     {
-        $active_player_no = $this->bga->globals->get('active_player_no');
+        $active_player_id = $this->bga->globals->get('active_player_id');
 
         $this->game->bga->notify->all('PickRank', '', [
-            'active_player_no' => $active_player_no,
+            'active_player_id' => $active_player_id,
         ]);
     }
 

@@ -33,7 +33,7 @@ class GameOn extends GameState
         $globals = $this->bga->globals;
         $game = $this->game;
 
-        if ($game->getPlayerNoById($currentPlayerId) != $globals->get('active_player_no'))
+        if ($currentPlayerId != $globals->get('active_player_id'))
             return $game->err($currentPlayerId, 'can\'t pass');
 
         $skip = $globals->get("skip_{$currentPlayerId}") + $globals->get('skip');
@@ -76,7 +76,7 @@ class GameOn extends GameState
 
         if ($globals->get('skip') + $globals->get("skip_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'have to skip');
 
-        if ($game->getPlayerNoById($currentPlayerId) != $globals->get('active_player_no'))
+        if ($currentPlayerId != $globals->get('active_player_id'))
             return $game->err($currentPlayerId, 'not your turn');
 
         if ($globals->get('drew')) return $game->err($currentPlayerId, 'can only draw once');
@@ -122,7 +122,7 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
-        if ($game->getPlayerNoById($currentPlayerId) != $globals->get('active_player_no')) return null; // can only play before drawing
+        if ($currentPlayerId != $globals->get('active_player_id')) return null; // can only play before drawing
         if ($globals->get("draw_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
         if ($globals->get("skip_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
 
@@ -224,32 +224,36 @@ class GameOn extends GameState
 
         for ($i = 0; $i < count($cards); $i++) {
             $card = $cards[$i];
-            if ($globals->get('skip') > 0) {
-                if ($card->rank == 4)
-                    $matchingCards[] = $card;
-                $top = $card;
-            } else if ($globals->get('draw') > 0) {
-                if (
-                    $card->rank == 2
-                    || $card->rank == 3
-                    || $card->rank == 13 // king
-                )
-                    $matchingCards[] = $card;
-                $top = $card;
-            } else if ($rank_demand > 0) {
-                if (
-                    $card->rank == $rank_demand
-                    || $card->rank == 11 && $card->suit == $top->suit
-                )
-                    $matchingCards[] = $card;
-            } else {
-                if (
-                    $card->rank == 12 // queen
-                    || $card->suit == $top->suit
-                    || $card->rank == $top->rank
-                    || $top->rank == 12 // queen
-                )
-                    $matchingCards[] = $card;
+            $playable = true;
+
+            if ($globals->get('skip') > 0 && $card->rank != 4)
+                $playable = false;
+
+            if (
+                $globals->get('draw') > 0
+                && $card->rank != 2
+                && $card->rank != 3
+                &&  $card->rank != 13 // king
+            )
+                $playable = false;
+
+            if (
+                $rank_demand > 0
+                && $card->rank != $rank_demand
+                && ($card->rank != 11 || $card->suit != $top->suit)
+            )
+                $playable = false;
+
+            if (
+                $card->rank != 12 // queen
+                && $card->suit != $top->suit
+                && $card->rank != $top->rank
+                && $top->rank != 12 // queen
+            )
+                $playable = false;
+
+            if ($playable) {
+                $matchingCards[] = $card;
                 $top = $card;
             }
         }
