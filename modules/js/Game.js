@@ -32,11 +32,25 @@ class PickRank {
         this.bga = bga;
     }
 
-    onEnteringState(_args, isCurrentPlayerActive) {
+    onEnteringState() {
+        if (this.player_id != this.player_ids[this.active_player_no]) return;
+
+        let cards = this.game.hand.cards;
+
         this.bga.statusBar.removeActionButtons();
         this.bga.statusBar.setTitle('Select a rank.');
         this.rankButtons = [];
+        let availableRanks = [];
+        availableRanks['any'] = 15;
+        for (let i = 0; i < cards.length; i++) {
+            let card = cards[i];
+            if (card.rank > 4 && card.rank < 11) {
+                availableRanks[card.rank] = card.rank;
+            }
+        }
+
         for (let i = 5; i < 11; i++) {
+            if (availableRanks[i] == undefined) continue;
             this.rankButtons[i] = this.bga.statusBar.addActionButton(_(`${i}`), () => {
                 this.bga.actions.performAction(
                     'actPick', {
@@ -290,7 +304,7 @@ export class Game {
                     matchingCards.push(card);
             } else if (this.rank_demand) {
                 if (card.rank == this.rank_demand
-                        || card.rank == 11 && card.suit == top.suit)
+                    || card.rank == 11 && card.suit == top.suit)
                     matchingCards.push(card);
             } else {
                 if (card.rank == 12 // queen
@@ -317,6 +331,10 @@ export class Game {
         let skip = this[`skip_{currentPlayerId}`];
         let draw = this[`draw_{currentPlayerId}`];
 
+        if (this.player_id = this.last_jack) {
+            this.last_jack = 0; this.rank_demand = 0;
+        }
+
         let selectableCards = [];
 
         if (this.bga.players.getCurrentPlayerNo() == this.active_player_no) {
@@ -330,8 +348,9 @@ export class Game {
                 if (this.play.getCards().length > 0) {
                     this.bga.statusBar.setTitle(_('You can play skip cards.'));
                     this.buttonsPlay();
+                    selectableCards = this.getPlayableCards(top, handCards);
                 } else {
-                    selectableCards = this.getPlayableCards(top, this.hand.getCards());
+                    selectableCards = this.getPlayableCards(top, handCards);
 
                     if (selectableCards.length < 1) {
                         this.bga.statusBar.setTitle(_('You must skip your turn.'));
@@ -384,7 +403,7 @@ export class Game {
         } else {
             this.draw = 0;
             this.skip = 0;
-            
+
             this.buttonsMakau();
             this.bga.statusBar.setTitle(_("${active_player} is playing now."), {
                 "active_player": this.bga.players.getPlayerByNo(this.active_player_no).name,
@@ -465,18 +484,14 @@ export class Game {
     async notif_NextPlayer(args) {
         this.active_player_no = args.active_player_no;
         this.drew = 0;
-        if (this.player_ids[this.active_player_no] == this.last_jack) {
-            this.last_jack = 0;
-            this.rank_demand = 0;
-        }
         this.setPlayOptions();
     }
 
     async notif_PlayCards(args) {
         this.discard.addCards(Array.from(Object.values(args.cards)));
-        let nextPlayer = 
+        let nextPlayer =
 
-        this.draw = args.draw;
+            this.draw = args.draw;
         this.skip = args.skip;
         this.suit_demand = args.suit_demand;
         this.rank_demand = args.rank_demand;
@@ -492,6 +507,7 @@ export class Game {
     }
 
     async notif_InvalidPlay(args) {
+        debugger;
         this.hand.unselectAll();
     }
 }

@@ -59,7 +59,7 @@ class Game extends \Bga\GameFramework\Table
         $globals = $this->bga->globals;
         $args = [];
 
-        $player_ids = array_keys($this->game->loadPlayersBasicInfos());
+        $player_ids = array_keys($this->loadPlayersBasicInfos());
         $args['player_ids'] = $player_ids;
 
         for ($i = 0; $i < count($player_ids); $i++) {
@@ -94,7 +94,7 @@ class Game extends \Bga\GameFramework\Table
     public function reset()
     {
         $globals = $this->bga->globals;
-        $player_ids = array_keys($this->game->loadPlayersBasicInfos());
+        $player_ids = array_keys($this->loadPlayersBasicInfos());
 
         for ($i = 0; $i < count($player_ids); $i++) {
             $player_id = $player_ids[$i];
@@ -148,7 +148,7 @@ class Game extends \Bga\GameFramework\Table
             $currentPlayerId,
             'InvalidPlay',
             $message,
-            []
+            ['message' => $message]
         );
         return null;
     }
