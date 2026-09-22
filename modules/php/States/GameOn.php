@@ -52,6 +52,7 @@ class GameOn extends GameState
         }
 
         if (!$skip && $draw) return $game->err($currentPlayerId, 'can\'t pass when you have to draw');
+        $globals->set('suit_demand', 0);
 
         $game->notify->all(
             'Pass',
@@ -75,6 +76,8 @@ class GameOn extends GameState
         $cards = $game->cards;
 
         if ($globals->get('skip') + $globals->get("skip_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'have to skip');
+        if ($globals->get('suit_demand') > 0) return $game->err($currentPlayerId, 'have to match suit');
+
 
         if ($currentPlayerId != $globals->get('active_player_id'))
             return $game->err($currentPlayerId, 'not your turn');
@@ -151,6 +154,7 @@ class GameOn extends GameState
         $rank_demand = $globals->get('rank_demand');
         $last_jack = $globals->get('last_jack');
         $jack = false;
+        $ace = false;
 
         for ($i = 0; $i < count($playedCards); $i++) {
             $card = $playedCards[$i];
@@ -164,6 +168,9 @@ class GameOn extends GameState
             }
             if ($card->rank == 11) { // J demands rank
                 $jack = true;
+            }
+            if ($card->rank == 14) {
+                $ace = true;
             }
         }
 
@@ -183,6 +190,11 @@ class GameOn extends GameState
             $cards->moveItem($playedCards[$i], 'discard');
         }
 
+        if ($suit_demand) {
+            $globals->set('suit_demand', 0);
+            $rank_demand = 0;
+        }
+
         $game->notify->all('PlayCards', '', [
             'cards' => $playedCards,
             'draw' => $draw,
@@ -195,7 +207,7 @@ class GameOn extends GameState
         ]);
 
         if ($jack) return PickRank::class;
-
+        if ($ace) return PickSuit::class;
         return NextPlayer::class;
     }
 
@@ -221,6 +233,7 @@ class GameOn extends GameState
         $globals = $this->bga->globals;
         $matchingCards = [];
         $rank_demand = $globals->get('rank_demand');
+        $suit_demand = $globals->get('suit_demand');
         $draw = $globals->get('draw');
         $skip = $globals->get('skip');
 
@@ -255,9 +268,16 @@ class GameOn extends GameState
                 $playable = true;
 
             if (
+                $suit_demand > 0
+                && $card->suit == $suit_demand
+            )
+                $playable = true;
+
+            if (
                 $skip == 0
                 && $draw == 0
                 && $rank_demand == 0
+                && $suit_demand == 0
                 &&
                 (
                     $card->rank == 12 // queen

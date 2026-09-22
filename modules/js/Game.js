@@ -53,7 +53,18 @@ class PickRank {
     }
 
     onPlayerActivationChange(args, isCurrentPlayerActive) {
-        this.game.pickRank(this.game.active_player_id, '');
+        this.game.pickRank(this.game.active_player_id, 'TODO fix');
+    }
+}
+
+class PickSuit {
+    constructor(game, bga) {
+        this.game = game;
+        this.bga = bga;
+    }
+
+    onPlayerActivationChange(args, isCurrentPlayerActive) {
+        this.game.pickSuit(this.game.active_player_id, 'TODO fix');
     }
 }
 
@@ -65,6 +76,7 @@ export class Game {
         this.bga.states.register('NewHand', new NewHand(this, bga));
         this.bga.states.register('GameOn', new GameOn(this, bga));
         this.bga.states.register('PickRank', new PickRank(this, bga));
+        this.bga.states.register('PickSuit', new PickSuit(this, bga));
 
         this.bga.states.logger = console.log;
         this.skip = 0;
@@ -77,6 +89,12 @@ export class Game {
                 2: "Heart",
                 3: "Club",
                 4: "Diamond",
+            },
+            "suit_unicode": {
+                1: "&#9824;",
+                2: "&#9829;",
+                3: "&#9827;",
+                4: "&#9830;",
             },
             "rank": {
                 2: "Two",
@@ -91,7 +109,8 @@ export class Game {
                 11: "Jack",
                 12: "Queen",
                 13: "King",
-                14: "Joker"
+                14: "Ace",
+                15: "Joker"
             },
         }
     }
@@ -180,7 +199,7 @@ export class Game {
                 div.dataset.rank = card.rank; // value 2..14
                 div.style.backgroundPositionX = `calc(100% / 14 * (${card.rank} - 2))`; // 14 is number of columns in stock image minus 1
                 div.style.backgroundPositionY = `calc(100% / 3 * (${card.suit} - 1))`; // 3 is number of rows in stock image minus 1
-                this.bga.gameui.addTooltipHtml(div.id, `${this.card_types["rank"][card.rank]} of ${this.card_types["suit"][card.suit]}s`);
+                this.bga.gameui.addTooltipHtml(div.id, `${this.card_types["rank"][card.rank]} ${this.card_types["suit_unicode"][card.suit]}`);
             },
             setupBackDiv: (card, div) => {
                 div.style.backgroundPositionX = `100%`;
@@ -427,7 +446,7 @@ export class Game {
             this.bga.statusBar.setTitle('Select a rank.');
             this.rankButtons = [];
             let availableRanks = [];
-            availableRanks['any'] = 15;
+            availableRanks['any'] = 15; // TODO: get to work!
             for (let i = 0; i < cards.length; i++) {
                 let card = cards[i];
                 if (card.rank > 4 && card.rank < 11) {
@@ -446,6 +465,37 @@ export class Game {
             }
         } else {
             this.bga.statusBar.setTitle(`${player_name} is selecting a rank.`);
+        }
+    }
+
+    pickSuit(active_player_id, player_name) {
+        debugger;   
+        this.bga.statusBar.removeActionButtons();
+
+        if (this.player_id == active_player_id) {
+            let cards = this.hand.cards;
+
+            this.bga.statusBar.setTitle('Select a suit.');
+            this.suitButtons = [];
+            let availableSuits = [];
+            availableSuits['any'] = 15; // TODO: get to work!
+            for (let i = 0; i < cards.length; i++) {
+                let card = cards[i];
+                    availableSuits[card.suit] = card.suit;
+            }
+
+            for (let i = 1; i < 5; i++) {
+                if (availableSuits[i] == undefined) continue;
+                // TODO: show emoji of the suit
+                this.suitButtons[i] = this.bga.statusBar.addActionButton(_(`${this.game.card_types["suit_unicode"][i]}`), () => {
+                    this.bga.actions.performAction(
+                        'actPick', {
+                        suit: i
+                    });
+                });
+            }
+        } else {
+            this.bga.statusBar.setTitle(`${player_name} is selecting a suit.`);
         }
     }
 
@@ -478,6 +528,7 @@ export class Game {
     }
 
     async notif_Pass(args) {
+        this.suit_demand = 0;
         this[`skip_${args.player_id}`] = args.skip;
     }
 
@@ -516,9 +567,16 @@ export class Game {
     }
 
     async notif_RankDemand(args) {
-        // I don't think I need this...        this.bga.statusBar.removeActionButtons();
         this.rank_demand = args.rank_demand;
         this.last_jack = args.last_jack;
+    }
+
+    async notif_PickSuit(args) {
+        this.pickSuit(args.active_player_id, args.player_name);
+    }
+
+    async notif_SuitDemand(args) {
+        this.suit_demand = args.suit_demand;
     }
 
     async notif_InvalidPlay(args) {
