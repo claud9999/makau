@@ -26,12 +26,14 @@ class PickRank extends GameState
         );
     }
 
-    function onEnteringState()
+    function onEnteringState(int $activePlayerId, array $args): void
     {
+        $game = $this->game;
         $active_player_id = $this->bga->globals->get('active_player_id');
 
-        $this->game->bga->notify->all('PickRank', '', [
+        $game->bga->notify->all('PickRank', '', [
             'active_player_id' => $active_player_id,
+            'player_name' => $game->getPlayerNameById($active_player_id),
         ]);
     }
 
@@ -55,6 +57,6 @@ class PickRank extends GameState
     public function zombie(int $playerId)
     {
         // We must implement this so BGA can auto play in the case a player becomes a zombie, but for this tutorial we won't handle this case
-        throw new UserException('Not implemented: zombie for player ${player_id}');
+        throw new UserException("Not implemented: zombie for player ${player_id}");
     }
 }

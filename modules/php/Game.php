@@ -70,8 +70,8 @@ class Game extends \Bga\GameFramework\Table
         }
 
         $args['player_id'] = $currentPlayerId;
-        $args['draw'] = $globals->get('draw');
-        $args['skip'] = $globals->get('skip');
+        $args['draw'] = $globals->get('draw') + 0;
+        $args['skip'] = $globals->get('skip') + 0;
         $args["draw_{$currentPlayerId}"] = $globals->get("draw_{$currentPlayerId}");
         $args["skip_{$currentPlayerId}"] = $globals->get("skip_{$currentPlayerId}");
         $args['suit_demand'] = $globals->get('suit_demand');
@@ -100,6 +100,8 @@ class Game extends \Bga\GameFramework\Table
 
         $globals->set('active_player_id', $this->getPlayerIdByNo(1));
         $globals->set('drew', 0);
+        $globals->set('draw', 0);
+        $globals->set('skip', 0);
         $globals->set('suit_demand', 0);
         $globals->set('rank_demand', 0);
         $globals->set('last_jack', 0);
@@ -134,6 +136,8 @@ class Game extends \Bga\GameFramework\Table
 
         $this->reattributeColorsBasedOnPreferences($players, $gameinfos["player_colors"]);
         $this->reloadPlayersBasicInfos();
+
+        $this->reset();
 
         return NewHand::class;
     }

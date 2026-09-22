@@ -202,7 +202,7 @@ class GameOn extends GameState
     public function zombie(int $playerId)
     {
         // We must implement this so BGA can auto play in the case a player becomes a zombie, but for this tutorial we won't handle this case
-        throw new UserException('Not implemented: zombie for player ${player_id}');
+        throw new UserException("Not implemented: zombie for player ${player_id}");
     }
 
     /* Logic:
@@ -221,36 +221,52 @@ class GameOn extends GameState
         $globals = $this->bga->globals;
         $matchingCards = [];
         $rank_demand = $globals->get('rank_demand');
+        $draw = $globals->get('draw');
+        $skip = $globals->get('skip');
 
         for ($i = 0; $i < count($cards); $i++) {
             $card = $cards[$i];
-            $playable = true;
-
-            if ($globals->get('skip') > 0 && $card->rank != 4)
-                $playable = false;
+            $playable = false;
 
             if (
-                $globals->get('draw') > 0
-                && $card->rank != 2
-                && $card->rank != 3
-                &&  $card->rank != 13 // king
+                $skip > 0
+                && $card->rank == 4
+            ) $playable = true;
+
+
+            if (
+                $draw > 0
+                && (
+                    $card->rank == 2
+                    || $card->rank == 3
+                    || $card->rank == 13 // king
+                )
             )
-                $playable = false;
+                $playable = true;
 
             if (
                 $rank_demand > 0
-                && $card->rank != $rank_demand
-                && ($card->rank != 11 || $card->suit != $top->suit)
+                &&
+                (
+                    $card->rank == $rank_demand
+                    || $card->rank == 11
+                )
             )
-                $playable = false;
+                $playable = true;
 
             if (
-                $card->rank != 12 // queen
-                && $card->suit != $top->suit
-                && $card->rank != $top->rank
-                && $top->rank != 12 // queen
+                $skip == 0
+                && $draw == 0
+                && $rank_demand == 0
+                &&
+                (
+                    $card->rank == 12 // queen
+                    || $card->suit == $top->suit
+                    || $card->rank == $top->rank
+                    || $top->rank == 12 // queen
+                )
             )
-                $playable = false;
+                $playable = true;
 
             if ($playable) {
                 $matchingCards[] = $card;

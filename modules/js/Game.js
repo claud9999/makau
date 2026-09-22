@@ -7,7 +7,11 @@ class GameOn {
         this.bga = bga;
     }
 
-    onEnteringState(_args, isCurrentPlayerActive) {
+    onEnteringState(args, isCurrentPlayerActive) {
+        this.onPlayerActivationChange(args, isCurrentPlayerActive);
+    }
+
+    onPlayerActivationChange(args, isCurrentPlayerActive) {
         this.game.setPlayOptions();
     }
 }
@@ -17,12 +21,28 @@ class NewHand {
         this.game = game;
         this.bga = bga;
     }
+
+    onEnteringState(args, isCurrentPlayerActive) {
+        this.onPlayerActivationChange(args, isCurrentPlayerActive);
+    }
+
+    onPlayerActivationChange(args, isCurrentPlayerActive) {
+        this.game.setPlayOptions();
+    }
 }
 
 class NextPlayer {
     constructor(game, bga) {
         this.game = game;
         this.bga = bga;
+    }
+
+    onEnteringState(args, isCurrentPlayerActive) {
+        this.onPlayerActivationChange(args, isCurrentPlayerActive);
+    }
+
+    onPlayerActivationChange(args, isCurrentPlayerActive) {
+        this.game.setPlayOptions();
     }
 }
 
@@ -32,33 +52,9 @@ class PickRank {
         this.bga = bga;
     }
 
-    onEnteringState() {
-        if (this.game.player_id != this.game.active_player_id) return;
-
-        let cards = this.game.hand.cards;
-
-        this.bga.statusBar.removeActionButtons();
-        this.bga.statusBar.setTitle('Select a rank.');
-        this.rankButtons = [];
-        let availableRanks = [];
-        availableRanks['any'] = 15;
-        for (let i = 0; i < cards.length; i++) {
-            let card = cards[i];
-            if (card.rank > 4 && card.rank < 11) {
-                availableRanks[card.rank] = card.rank;
-            }
-        }
-
-        for (let i = 5; i < 11; i++) {
-            if (availableRanks[i] == undefined) continue;
-            this.rankButtons[i] = this.bga.statusBar.addActionButton(_(`${i}`), () => {
-                this.bga.actions.performAction(
-                    'actPick', {
-                    rank: i
-                });
-            });
-        }
-        }
+    onPlayerActivationChange(args, isCurrentPlayerActive) {
+        this.game.pickRank(this.game.active_player_id, '');
+    }
 }
 
 export class Game {
@@ -66,12 +62,14 @@ export class Game {
         console.log('makaucloudnein constructor');
         this.bga = bga;
 
-        this.GameOn = new GameOn(this, bga);
         this.bga.states.register('NewHand', new NewHand(this, bga));
         this.bga.states.register('GameOn', new GameOn(this, bga));
         this.bga.states.register('PickRank', new PickRank(this, bga));
 
         this.bga.states.logger = console.log;
+        this.skip = 0;
+        this.draw = 0;
+
         this.drew = 0;
         this.card_types = {
             "suit": {
@@ -102,8 +100,7 @@ export class Game {
         console.log("Starting game setup");
         this.active_player_id = args.active_player_id;
         this.player_ids = args.player_ids;
-        let player_id = args.player_id;
-        this.player_id = player_id;
+        this.player_id = args.player_id;
         this.skip = args.skip;
         this.draw = args.draw;
         this[`draw_{player_id}`] = args[`draw_{player_id}`];
@@ -293,29 +290,38 @@ export class Game {
 
         for (let i = 0; i < cards.length; i++) {
             let card = cards[i];
-            let playable = true;
-            if (this.skip > 0 && card.rank != 4)
-                playable = false;
+            let playable = false;
+            if (this.skip > 0 && card.rank == 4)
+                playable = true;
 
-            if (this.draw > 0 && card.rank != 2
-                && card.rank != 3
-                && card.rank != 13 // TODO: king
+            if (this.draw > 0 &&
+                (
+                    card.rank == 2
+                    || card.rank == 3
+                    || card.rank == 13 // TODO: king
+                )
             )
-                playable = false;
+                playable = true;
 
             if (this.rank_demand > 0
-                && card.rank != this.rank_demand
-                && (card.rank != 11
-                || card.suit != top.suit)
+                && (
+                    card.rank == this.rank_demand
+                    || card.rank === 11
+                )
             )
-                playable = false;
+                playable = true;
 
-            if (card.rank != 12 // queen
-                && card.suit != top.suit
-                && card.rank != top.rank
-                && top.rank != 12 // queen
+            if (this.skip == 0
+                && this.draw == 0
+                && this.rank_demand == 0
+                && (
+                    card.rank == 12 // queen
+                    || card.suit == top.suit
+                    || card.rank == top.rank
+                    || top.rank == 12 // queen
+                )
             )
-                playable = false;
+                playable = true;
 
             if (playable)
                 matchingCards.push(card);
@@ -336,7 +342,7 @@ export class Game {
         let skip = this[`skip_{currentPlayerId}`];
         let draw = this[`draw_{currentPlayerId}`];
 
-        if (this.player_id = this.last_jack) {
+        if (this.player_id == this.last_jack) {
             this.last_jack = 0; this.rank_demand = 0;
         }
 
@@ -412,6 +418,37 @@ export class Game {
         }
     }
 
+    pickRank(active_player_id, player_name) {
+        this.bga.statusBar.removeActionButtons();
+
+        if (this.player_id == active_player_id) {
+            let cards = this.hand.cards;
+
+            this.bga.statusBar.setTitle('Select a rank.');
+            this.rankButtons = [];
+            let availableRanks = [];
+            availableRanks['any'] = 15;
+            for (let i = 0; i < cards.length; i++) {
+                let card = cards[i];
+                if (card.rank > 4 && card.rank < 11) {
+                    availableRanks[card.rank] = card.rank;
+                }
+            }
+
+            for (let i = 5; i < 11; i++) {
+                if (availableRanks[i] == undefined) continue;
+                this.rankButtons[i] = this.bga.statusBar.addActionButton(_(`${i}`), () => {
+                    this.bga.actions.performAction(
+                        'actPick', {
+                        rank: i
+                    });
+                });
+            }
+        } else {
+            this.bga.statusBar.setTitle(`${player_name} is selecting a rank.`);
+        }
+    }
+
     async notif_NewHand(args) {
         // We received a new full hand of cards.
         await this.hand.removeAll();
@@ -464,9 +501,8 @@ export class Game {
 
     async notif_PlayCards(args) {
         this.discard.addCards(Array.from(Object.values(args.cards)));
-        let nextPlayer =
 
-            this.draw = args.draw;
+        this.draw = args.draw;
         this.skip = args.skip;
         this.suit_demand = args.suit_demand;
         this.rank_demand = args.rank_demand;
@@ -475,14 +511,17 @@ export class Game {
         this.updateOtherPlayerHandCount(args);
     }
 
+    async notif_PickRank(args) {
+        this.pickRank(args.active_player_id, args.player_name);
+    }
+
     async notif_RankDemand(args) {
-        this.bga.statusBar.removeActionButtons();
+        // I don't think I need this...        this.bga.statusBar.removeActionButtons();
         this.rank_demand = args.rank_demand;
         this.last_jack = args.last_jack;
     }
 
     async notif_InvalidPlay(args) {
-        debugger;
         this.hand.unselectAll();
     }
 }

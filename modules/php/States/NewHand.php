@@ -38,6 +38,6 @@ class NewHand extends GameState
     public function zombie(int $playerId)
     {
         // We must implement this so BGA can auto play in the case a player becomes a zombie, but for this tutorial we won't handle this case
-        throw new UserException('Not implemented: zombie for player ${player_id}');
+        throw new UserException("Not implemented: zombie for player ${player_id}");
     }
 }
