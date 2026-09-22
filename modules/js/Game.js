@@ -487,7 +487,7 @@ export class Game {
             for (let i = 1; i < 5; i++) {
                 if (availableSuits[i] == undefined) continue;
                 // TODO: show emoji of the suit
-                this.suitButtons[i] = this.bga.statusBar.addActionButton(_(`${this.game.card_types["suit_unicode"][i]}`), () => {
+                this.suitButtons[i] = this.bga.statusBar.addActionButton(_(`${this.card_types["suit_unicode"][i]}`), () => {
                     this.bga.actions.performAction(
                         'actPick', {
                         suit: i
