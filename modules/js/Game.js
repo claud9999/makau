@@ -115,6 +115,35 @@ export class Game {
         }
     }
 
+    tooltip(card) {
+        let r = `${this.card_types["rank"][card.rank]} ${this.card_types["suit_unicode"][card.suit]}`;
+        switch (card.rank) {
+            case 2:
+                r += ' (next player draws 2)';
+                break;
+            case 3:
+                r += ' (next player draws 3)';
+                break;
+            case 4:
+                r += ' (skip next player)';
+                break;
+            case 11:
+                r += ' (demand non-action rank of other players)';
+                break;
+            case 12:
+                r += ' (anything on queen, queen on anything)';
+                break;
+            case 14:
+                r += ' (demand next player play suit)';
+                break;
+            case 15:
+                r += ' (can be played as any card at any time)';
+                break;
+        }
+
+        return r;
+    }
+
     setup(args) {
         console.log("Starting game setup");
         this.active_player_id = args.active_player_id;
@@ -199,7 +228,7 @@ export class Game {
                 div.dataset.rank = card.rank; // value 2..14
                 div.style.backgroundPositionX = `calc(100% / 14 * (${card.rank} - 2))`; // 14 is number of columns in stock image minus 1
                 div.style.backgroundPositionY = `calc(100% / 3 * (${card.suit} - 1))`; // 3 is number of rows in stock image minus 1
-                this.bga.gameui.addTooltipHtml(div.id, `${this.card_types["rank"][card.rank]} ${this.card_types["suit_unicode"][card.suit]}`);
+                this.bga.gameui.addTooltipHtml(div.id, this.tooltip(card));
             },
             setupBackDiv: (card, div) => {
                 div.style.backgroundPositionX = `100%`;
@@ -469,7 +498,7 @@ export class Game {
     }
 
     pickSuit(active_player_id, player_name) {
-        debugger;   
+        debugger;
         this.bga.statusBar.removeActionButtons();
 
         if (this.player_id == active_player_id) {
@@ -481,7 +510,7 @@ export class Game {
             availableSuits['any'] = 15; // TODO: get to work!
             for (let i = 0; i < cards.length; i++) {
                 let card = cards[i];
-                    availableSuits[card.suit] = card.suit;
+                availableSuits[card.suit] = card.suit;
             }
 
             for (let i = 1; i < 5; i++) {
