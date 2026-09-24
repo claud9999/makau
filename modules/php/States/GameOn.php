@@ -33,7 +33,7 @@ class GameOn extends GameState
         $globals = $this->bga->globals;
         $game = $this->game;
 
-        if ($currentPlayerId != $globals->get('active_player_id'))
+        if ($currentPlayerId != $globals->get('fw_player_id'))
             return $game->err($currentPlayerId, 'can\'t pass');
 
         $skip = $globals->get("skip_{$currentPlayerId}") + $globals->get('skip');
@@ -75,16 +75,21 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
+        $fw_player_id = $globals->get('fw_player_id');
+        $bw_player_id = $globals->get('bw_player_id');
+        $draw = $globals->get('draw');
+        $draw_me = $globals->get("draw_{$currentPlayerId}");
+
         if ($globals->get('skip') + $globals->get("skip_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'have to skip');
         if ($globals->get('suit_demand') > 0) return $game->err($currentPlayerId, 'have to match suit');
 
 
-        if ($currentPlayerId != $globals->get('active_player_id'))
+        if ($currentPlayerId != $fw_player_id && $currentPlayerId != $bw_player_id)
             return $game->err($currentPlayerId, 'not your turn');
 
         if ($globals->get('drew')) return $game->err($currentPlayerId, 'can only draw once');
         $forcedDraw = false;
-        $draw = $globals->get("draw_{$currentPlayerId}") + $globals->get('draw');
+        $draw += $draw_me;
         if ($draw == 0) $draw = 10;
         else $forcedDraw = true;
 
@@ -125,7 +130,7 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
-        if ($currentPlayerId != $globals->get('active_player_id')) return null; // can only play before drawing
+        if ($currentPlayerId != $globals->get('fw_player_id')) return null; // can only play before drawing
         if ($globals->get("draw_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
         if ($globals->get("skip_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
 
@@ -162,14 +167,24 @@ class GameOn extends GameState
                 $draw += $card->rank;
                 $draw_add = true;
             }
+            if ($card->rank == 13 && $card->suit == 1) {
+            // TODO: KS
+            }
+            if ($card->rank == 13 && $card->suit == 2) {
+                // KH
+                $draw += 5;
+                $draw_add = true;
+            }
             if ($card->rank == 4) {
                 $skip += 1;
                 $skip_add = true;
             }
-            if ($card->rank == 11) { // J demands rank
+            if ($card->rank == 11) {
+                // J demands rank
                 $jack = true;
             }
             if ($card->rank == 14) {
+                // A demands suit
                 $ace = true;
             }
         }
@@ -252,7 +267,8 @@ class GameOn extends GameState
                 && (
                     $card->rank == 2
                     || $card->rank == 3
-                    || $card->rank == 13 // king
+//                    || $card->rank == 13 && $card->suit == 1 // KS
+                    || $card->rank == 13 && $card->suit == 2 // KH
                 )
             )
                 $playable = true;

@@ -77,7 +77,8 @@ class Game extends \Bga\GameFramework\Table
         $args['suit_demand'] = $globals->get('suit_demand');
         $args['rank_demand'] = $globals->get('rank_demand');
         $args['last_jack'] = $globals->get('last_jack');
-        $args['active_player_id'] = $globals->get('active_player_id');
+        $args['fw_player_id'] = $globals->get('fw_player_id');
+        $args['bw_player_id'] = $globals->get('bw_player_id');
         $args['drew'] = $globals->get('drew');
 
         $args['deck'] = $cards->countItemsInLocation('deck');
@@ -98,7 +99,8 @@ class Game extends \Bga\GameFramework\Table
             $globals->set("skip_{$player_id}", 0);
         }
 
-        $globals->set('active_player_id', $this->getPlayerIdByNo(1));
+        $globals->set('fw_player_id', $this->getPlayerIdByNo(1));
+        $globals->set('bw_player_id', 0);
         $globals->set('drew', 0);
         $globals->set('draw', 0);
         $globals->set('skip', 0);

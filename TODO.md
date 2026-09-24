@@ -1,8 +1,10 @@
 # TODO
 
 * allow clicking on the deck to draw a card
-* disable unplayable cards (esp when not the active player)
-* tooltips/graphics to indicate special cards
+* Jokers
+* KS -- does this "spawn" a counter-clockwise play path?
+* Makau button
+* "Any" suit and "Any" rank options
 * enforce rules
 * test 3 and 4 players
 
@@ -25,3 +27,9 @@ P1: hand is 9H, 3S, etc., draws 9S, can he play 9H, 9S, 3S or does he have to pl
 Discard: 7H
 P1: plays 2H, 4H
 P2: wants to play 4D, 4S, does he need to play a draw card (2, 3, K) as well?
+
+## Four
+four players
+P3: plays KS, 4S
+P2: plays 2C
+P4: skips

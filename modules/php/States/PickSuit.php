@@ -29,11 +29,11 @@ class PickSuit extends GameState
     function onEnteringState(int $activePlayerId, array $args): void
     {
         $game = $this->game;
-        $active_player_id = $this->bga->globals->get('active_player_id');
+        $fw_player_id = $this->bga->globals->get('fw_player_id');
 
         $game->bga->notify->all('PickSuit', '', [
-            'active_player_id' => $active_player_id,
-            'player_name' => $game->getPlayerNameById($active_player_id),
+            'fw_player_id' => $fw_player_id,
+            'player_name' => $game->getPlayerNameById($fw_player_id),
         ]);
     }
 

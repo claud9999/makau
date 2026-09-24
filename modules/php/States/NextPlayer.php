@@ -31,7 +31,7 @@ class NextPlayer extends GameState
         $globals = $this->bga->globals;
         $game = $this->game;
 
-        $active_player_no = $game->getPlayerNoById($globals->get('active_player_id'));
+        $active_player_no = $game->getPlayerNoById($globals->get('fw_player_id'));
         $active_player_no++;
         if ($active_player_no > $game->getPlayerCount()) $active_player_no = 1;
 
@@ -42,11 +42,11 @@ class NextPlayer extends GameState
             $globals->set('rank_demand', 0);
         }
 
-        $globals->set('active_player_id', $next_player_id);
+        $globals->set('fw_player_id', $next_player_id);
         $globals->set('drew', 0);
 
         $game->bga->notify->all('NextPlayer', '', [
-            'active_player_id' => $next_player_id,
+            'fw_player_id' => $next_player_id,
         ]);
 
         return GameOn::class;

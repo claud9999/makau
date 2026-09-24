@@ -53,7 +53,7 @@ class PickRank {
     }
 
     onPlayerActivationChange(args, isCurrentPlayerActive) {
-        this.game.pickRank(this.game.active_player_id, 'TODO fix');
+        this.game.pickRank(this.game.fw_player_id, 'TODO fix');
     }
 }
 
@@ -64,7 +64,7 @@ class PickSuit {
     }
 
     onPlayerActivationChange(args, isCurrentPlayerActive) {
-        this.game.pickSuit(this.game.active_player_id, 'TODO fix');
+        this.game.pickSuit(this.game.fw_player_id, 'TODO fix');
     }
 }
 
@@ -146,7 +146,8 @@ export class Game {
 
     setup(args) {
         console.log("Starting game setup");
-        this.active_player_id = args.active_player_id;
+        this.fw_player_id = args.fw_player_id;
+        this.bw_player_id = args.bw_player_id;
         this.player_ids = args.player_ids;
         this.player_id = args.player_id;
         this.skip = args.skip;
@@ -396,7 +397,7 @@ export class Game {
 
         let playableCards = this.getPlayableCards(top, handCards);
 
-        if (this.bga.players.getCurrentPlayerId() == this.active_player_id) {
+        if (currentPlayerId == this.fw_player_id) {
             if (this[`skip_{this.player_id}`] > 0) {
                 this.bga.statusBar.setTitle(_('You must skip your turn.'));
                 this.buttonsPass();
@@ -427,6 +428,8 @@ export class Game {
                     this.buttonsPass();
                 }
             }
+        } else if (currentPlayerId == this.bw_player_id) {
+            // TODO: bw_active_player
         } else {
             this.draw = 0;
             this.skip = 0;
@@ -434,7 +437,7 @@ export class Game {
 
             this.buttonsMakau();
             this.bga.statusBar.setTitle(_("${active_player} is playing now."), {
-                "active_player": this.bga.players.getPlayerById(this.active_player_id).name,
+                "active_player": this.bga.players.getPlayerById(this.fw_player_id).name,
             });
         }
 
@@ -466,10 +469,10 @@ export class Game {
         }
     }
 
-    pickRank(active_player_id, player_name) {
+    pickRank(fw_player_id, player_name) {
         this.bga.statusBar.removeActionButtons();
 
-        if (this.player_id == active_player_id) {
+        if (this.player_id == fw_player_id) {
             let cards = this.hand.cards;
 
             this.bga.statusBar.setTitle('Select a rank.');
@@ -497,11 +500,11 @@ export class Game {
         }
     }
 
-    pickSuit(active_player_id, player_name) {
+    pickSuit(fw_player_id, player_name) {
         debugger;
         this.bga.statusBar.removeActionButtons();
 
-        if (this.player_id == active_player_id) {
+        if (this.player_id == fw_player_id) {
             let cards = this.hand.cards;
 
             this.bga.statusBar.setTitle('Select a suit.');
@@ -534,7 +537,8 @@ export class Game {
         await this.hand.addCards(Array.from(Object.values(args.hand)));
         await this.discard.removeAll();
         await this.discard.addCards(Array.from(Object.values(args.discards)));
-        this.active_player_id = args.active_player_id;
+        this.fw_player_id = args.fw_player_id;
+        this.bw_player_id = 0;
         this.skip = 0;
         this.draw = 0;
         this.drew = 0;
@@ -574,7 +578,7 @@ export class Game {
     }
 
     async notif_NextPlayer(args) {
-        this.active_player_id = args.active_player_id;
+        this.fw_player_id = args.fw_player_id;
         this.drew = 0;
         this.setPlayOptions();
     }
@@ -592,7 +596,7 @@ export class Game {
     }
 
     async notif_PickRank(args) {
-        this.pickRank(args.active_player_id, args.player_name);
+        this.pickRank(args.fw_player_id, args.player_name);
     }
 
     async notif_RankDemand(args) {
@@ -601,7 +605,7 @@ export class Game {
     }
 
     async notif_PickSuit(args) {
-        this.pickSuit(args.active_player_id, args.player_name);
+        this.pickSuit(args.fw_player_id, args.player_name);
     }
 
     async notif_SuitDemand(args) {
