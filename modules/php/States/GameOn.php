@@ -329,6 +329,7 @@ class GameOn extends GameState
 
 
         $game->notify->all('PlayCards', '', [
+            'player_id' => $currentPlayerId,
             'cards' => $playedCards,
             'draw' => $draw,
             'bwdraw' => $bwdraw,

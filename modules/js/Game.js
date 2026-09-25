@@ -325,6 +325,20 @@ export class Game {
         return matchingCards;
     }
 
+    updateHandSize(player_id, count) {
+        if (this[`hand_${player_id}`] == undefined) return;
+
+        this[`hand_${player_id}`].removeAll();
+
+        for (let j = 0; j < count; j++) {
+            this[`hand_${player_id}`].addCard({
+                id: `player_${player_id}_card_${j}`,
+                suit: 0,
+                rank: 0
+            });
+        }
+    }
+
     setPlayOptions() {
         let currentPlayerId = this.bga.players.getCurrentPlayerId();
         this.bga.statusBar.removeActionButtons();
@@ -343,20 +357,20 @@ export class Game {
         let skip = this[`skip_{currentPlayerId}`];
         let draw = this[`draw_{currentPlayerId}`];
 
-        if (this.player_id == this.last_jack) {
+        if (this.fw_player_id == this.last_jack) {
             this.last_jack = 0; this.rank_demand = 0;
         }
 
         let playableCards = this.getPlayableCards(top, handCards);
 
-        if (currentPlayerId == this.player_id) {
-            if (this[`skip_{this.player_id}`] > 0) {
+        if (currentPlayerId == this.fw_player_id) {
+            if (this[`skip_{this.fw_player_id}`] > 0) {
                 this.bga.statusBar.setTitle(_('You must skip your turn.'));
                 this.buttonsPass();
                 playableCards = [];
             }
 
-            if (this[`draw_{this.player_id}`] > 0 || this.draw && playableCards.length < 1) {
+            if (this[`draw_{this.fw_player_id}`] > 0 || this.draw && playableCards.length < 1) {
                 this.bga.statusBar.setTitle(_('You must draw cards.'));
                 this.buttonsDraw();
                 playableCards = [];
