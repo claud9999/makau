@@ -25,7 +25,10 @@ class GameOn extends GameState
         );
     }
 
-    function onEnteringState() {}
+    function onEnteringState()
+    {
+        $this->gamestate->setAllPlayersMultiactive();
+    }
 
     #[PossibleAction]
     public function actPass(int $currentPlayerId)
@@ -53,6 +56,8 @@ class GameOn extends GameState
 
         if (!$skip && $draw) return $game->err($currentPlayerId, 'can\'t pass when you have to draw');
         $globals->set('suit_demand', 0);
+        $fw_player_id = $this->nextPlayerId($currentPlayerId);
+        $globals->set('player_id', $player_id);
 
         $game->notify->all(
             'Pass',
@@ -60,12 +65,43 @@ class GameOn extends GameState
             [
                 'player_id' => $currentPlayerId,
                 'player_name' => $game->getPlayerNameById($currentPlayerId),
+                'fw_player_id' => $fw_player_id,
                 'skip' => $skip,
                 'draw' => $draw,
             ]
         );
+    }
 
-        return NextPlayer::class;
+    function bwDraw(int $currentPlayerId)
+    {
+        $globals = $this->bga->globals;
+        $game = $this->game;
+        $cards = $game->cards;
+
+        $draw = $globals->get('bw_draw');
+        $globals->set('bw_draw', 0);
+        $globals->set('bw_player_id', 0);
+        $drawnCards = $cards->pickItems($draw, 'deck', ['hand', $currentPlayerId])->values();
+
+        $args = [
+            'deck' => $cards->countItemsInLocation('deck'),
+            'player_name' => $game->getPlayerNameById($currentPlayerId),
+            'player_ids' => [$currentPlayerId],
+            'bw_player_id' => 0,
+            'draw' => $draw,
+            "hand_{$currentPlayerId}" => $cards->countItemsInLocation(['hand', $currentPlayerId]),
+            '_private' => [
+                $currentPlayerId => [
+                    'cards' => $drawnCards
+                ]
+            ]
+        ];
+
+        $game->notify->all(
+            'DrawCards',
+            clienttranslate('${player_name} takes card(s) from the deck'),
+            $args
+        );
     }
 
     #[PossibleAction]
@@ -75,17 +111,18 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
+        // TODO: it's possible I'm both the forward and backward player, how to handle?
+        if ($globals->get('bw_player_id')) return bwDraw($currentPlayerId);
+
         $fw_player_id = $globals->get('fw_player_id');
-        $bw_player_id = $globals->get('bw_player_id');
+
+        if ($currentPlayerId != $fw_player_id) return $game->err($currentPlayerId, 'not your turn');
+
         $draw = $globals->get('draw');
         $draw_me = $globals->get("draw_{$currentPlayerId}");
 
         if ($globals->get('skip') + $globals->get("skip_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'have to skip');
         if ($globals->get('suit_demand') > 0) return $game->err($currentPlayerId, 'have to match suit');
-
-
-        if ($currentPlayerId != $fw_player_id && $currentPlayerId != $bw_player_id)
-            return $game->err($currentPlayerId, 'not your turn');
 
         if ($globals->get('drew')) return $game->err($currentPlayerId, 'can only draw once');
         $forcedDraw = false;
@@ -95,32 +132,103 @@ class GameOn extends GameState
 
         $drawnCards = $cards->pickItems($draw, 'deck', ['hand', $currentPlayerId])->values();
 
-        if ($forcedDraw > 0) {
+        $globals->set('drew', $draw);
+
+        $args = [
+            'deck' => $cards->countItemsInLocation('deck'),
+            'player_name' => $game->getPlayerNameById($currentPlayerId),
+            'player_ids' => [$currentPlayerId],
+            'draw' => $draw,
+            "hand_{$currentPlayerId}" => $cards->countItemsInLocation(['hand', $currentPlayerId]),
+            '_private' => [
+                $currentPlayerId => [
+                    'cards' => $drawnCards
+                ]
+            ]
+        ];
+
+        if ($forcedDraw) {
             $globals->set('draw', 0);
             $globals->set("draw_{$currentPlayerId}", 0);
-        }
 
-        $globals->set('drew', $draw);
+            $fw_player_id = $this->nextPlayerId($currentPlayerId);
+            $args['fw_player_id'] = $fw_player_id;
+            $globals->set('fw_player_id', $fw_player_id);
+        }
 
         $game->notify->all(
             'DrawCards',
             clienttranslate('${player_name} takes card(s) from the deck'),
-            [
-                'deck' => $cards->countItemsInLocation('deck'),
-                'player_name' => $game->getPlayerNameById($currentPlayerId),
-                'player_ids' => [$currentPlayerId],
-                'drew' => $draw,
-                "hand_{$currentPlayerId}" => $cards->countItemsInLocation(['hand', $currentPlayerId]),
-                '_private' => [
-                    $currentPlayerId => [
-                        'cards' => $drawnCards
-                    ]
-                ]
-            ]
+            $args
         );
+    }
 
-        if ($forcedDraw) return NextPlayer::class; // when forced to draw, I am done
-        return null;
+    public function bwPlay(#[IntArrayParam()] array $cardIds, int $currentPlayerId)
+    {
+        $globals = $this->bga->globals;
+        $game = $this->game;
+        $cards = $game->cards;
+
+        if ($currentPlayerId != $globals->get('bw_player_id')) return $game->err($currentPlayerId, 'not current player');
+
+        if ($globals->get("draw_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
+
+        $discards = $cards->getItemsInLocation('discard');
+        $top = $cards->getItemOnTop('discard');
+        $playedCards = [];
+
+        for ($i = 0; $i < count($cardIds); $i++) {
+            $playedCards[] = $cards->getItemById($cardIds[$i]);
+        }
+
+        $playableCards = $this->getDrawCards($playedCards);
+
+        if (count($playableCards) < count($playedCards)) {
+            return $game->err(
+                $currentPlayerId,
+                'You cannot play ' . $this->getCardName($playedCards[count($playableCards)])
+            );
+        }
+
+        $draw = $globals->get('draw');
+        $draw_add = false;
+
+        for ($i = 0; $i < count($playedCards); $i++) {
+            $card = $playedCards[$i];
+            if ($card->rank == 2 || $card->rank == 3) {
+                $draw += $card->rank;
+                $draw_add = true;
+            }
+            if ($card->rank == 13) {
+                if ($card->suit == 1 || $card->suit == 2) {
+                    $draw += 5;
+                    $draw_add = true;
+                } else {
+                    $draw = 0;
+                    $draw_add = 0;
+                }
+            }
+        }
+
+        if ($draw > 0) {
+            if ($draw_add) {
+                $globals->set('draw', $draw);
+            } else {
+                return $game->err($currentPlayerId, 'you must draw');
+            }
+        }
+
+        // valid play, move the cards to the discard pile
+        // one at a time to maintain order
+        for ($i = 0; $i < count($playedCards); $i++) {
+            $cards->moveItem($playedCards[$i], 'discard');
+        }
+
+        $game->notify->all('BWPlayCards', '', [
+            'cards' => $playedCards,
+            'bw_player_id' => $this->prevPlayerId($currentPlayerId),
+            "hand_{$currentPlayerId}" => $cards->countItemsInLocation(['hand', $currentPlayerId]),
+        ]);
     }
 
     #[PossibleAction]
@@ -130,7 +238,9 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
-        if ($currentPlayerId != $globals->get('fw_player_id')) return null; // can only play before drawing
+        if ($currentPlayerId == $globals->get('bw_player_id')) return bwPlay($cardIds, $currentPlayerId);
+        if ($currentPlayerId != $globals->get('fw_player_id')) return null;
+
         if ($globals->get("draw_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
         if ($globals->get("skip_{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
 
@@ -158,8 +268,11 @@ class GameOn extends GameState
         $suit_demand = $globals->get('suit_demand');
         $rank_demand = $globals->get('rank_demand');
         $last_jack = $globals->get('last_jack');
-        $jack = false;
-        $ace = false;
+        $rankpick = 0;
+        $suitpick = 0;
+        $fw_player_id = $this->nextPlayerId($currentPlayerId);
+        $bw_player_id = 0;
+        $bwdraw = 0;
 
         for ($i = 0; $i < count($playedCards); $i++) {
             $card = $playedCards[$i];
@@ -168,10 +281,12 @@ class GameOn extends GameState
                 $draw_add = true;
             }
             if ($card->rank == 13 && $card->suit == 1) {
-            // TODO: KS
+                // KS prev draw 5
+                $bwdraw = 5;
+                $bw_player_id = $this->prevPlayerId($currentPlayerId);
             }
             if ($card->rank == 13 && $card->suit == 2) {
-                // KH
+                // KH draw 5
                 $draw += 5;
                 $draw_add = true;
             }
@@ -181,11 +296,13 @@ class GameOn extends GameState
             }
             if ($card->rank == 11) {
                 // J demands rank
-                $jack = true;
+                $rankpick = $currentPlayerId;
+                $fw_player_id = $currentPlayerId;
             }
             if ($card->rank == 14) {
                 // A demands suit
-                $ace = true;
+                $suitpick = $currentPlayerId;
+                $fw_player_id = $currentPlayerId;
             }
         }
 
@@ -210,26 +327,75 @@ class GameOn extends GameState
             $rank_demand = 0;
         }
 
+
         $game->notify->all('PlayCards', '', [
             'cards' => $playedCards,
             'draw' => $draw,
+            'bwdraw' => $bwdraw,
             'skip' => $skip,
             'suit_demand' => $suit_demand,
             'rank_demand' => $rank_demand,
+            'rankpick' => $rankpick,
+            'suitpick' => $suitpick,
             'last_jack' => $last_jack,
-            'player_ids' => [$currentPlayerId],
-            "hand_{$currentPlayerId}" => $cards->countItemsInLocation(['hand', $currentPlayerId]),
+            'fw_player_id' => $fw_player_id,
+            'bw_player_id' => $bw_player_id,
+            'hand_size' => $cards->countItemsInLocation(['hand', $currentPlayerId]),
         ]);
+    }
 
-        if ($jack) return PickRank::class;
-        if ($ace) return PickSuit::class;
-        return NextPlayer::class;
+    #[PossibleAction]
+    public function actPickRank(int $rank, int $currentPlayerId)
+    {
+        // TODO: how to identify if the player is picking
+        $globals = $this->bga->globals;
+        if ($globals->get('rankpick') != $currentPlayerId) return null;
+
+        $globals->set('rank_demand', $rank);
+        $globals->set('last_jack', $currentPlayerId);
+
+        $this->game->bga->notify->all('RankDemand', '', [
+            'last_jack' => $currentPlayerId,
+            'rank_demand' => $rank,
+        ]);
+    }
+
+    #[PossibleAction]
+    public function actPickSuit(int $suit, int $currentPlayerId)
+    {
+        $globals = $this->bga->globals;
+        if ($globals->get('suitpick') != $currentPlayerId) return null;
+
+        $globals->set('suit_demand', $suit);
+
+        $this->game->bga->notify->all('SuitDemand', '', [
+            'suit' => $suit,
+        ]);
     }
 
     public function zombie(int $playerId)
     {
         // We must implement this so BGA can auto play in the case a player becomes a zombie, but for this tutorial we won't handle this case
-        throw new UserException("Not implemented: zombie for player ${player_id}");
+        throw new UserException("Not implemented: zombie for player ${playerId}");
+    }
+
+    function getDrawCards($cards): array
+    {
+        $matchingCards = [];
+
+        for ($i = 0; $i < count($cards); $i++) {
+            $card = $cards[$i];
+
+            if (
+                $card->rank == 2
+                || $card->rank == 3
+                //                    || $card->rank == 13 && $card->suit == 1 // KS
+                || $card->rank == 13 && $card->suit == 2 // KH
+            )
+                $matchingCards[] = $card;
+        }
+
+        return $matchingCards;
     }
 
     /* Logic:
@@ -267,7 +433,7 @@ class GameOn extends GameState
                 && (
                     $card->rank == 2
                     || $card->rank == 3
-//                    || $card->rank == 13 && $card->suit == 1 // KS
+                    //                    || $card->rank == 13 && $card->suit == 1 // KS
                     || $card->rank == 13 && $card->suit == 2 // KH
                 )
             )
@@ -296,10 +462,11 @@ class GameOn extends GameState
                 && $suit_demand == 0
                 &&
                 (
-                    $card->rank == 12 // queen
+                    $card->rank == 14 // A wild
+                    || $card->rank == 12 // Q wild
                     || $card->suit == $top->suit
                     || $card->rank == $top->rank
-                    || $top->rank == 12 // queen
+                    || $top->rank == 12 // wild Q
                 )
             )
                 $playable = true;
@@ -321,5 +488,23 @@ class GameOn extends GameState
     function getCardNames($cards): string
     {
         return implode(", ", array_map(fn($card) => $this->getCardName($card), $cards));
+    }
+
+    function nextPlayerId($player_id): int
+    {
+        $game = $this->game;
+
+        $player_no = $game->getPlayerNoById($player_id) + 1;
+        if ($player_no > $game->getPlayerCount()) $player_no = 1;
+        return $game->getPlayerIdByNo($player_no);
+    }
+
+    function prevPlayerId($player_id): int
+    {
+        $game = $this->game;
+
+        $player_no = $game->getPlayerNoById($player_id) - 1;
+        if ($player_no < 1) $player_no = $game->getPlayerCount();
+        return $game->getPlayerIdByNo($player_no);
     }
 }

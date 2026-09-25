@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Bga\Games\makaucloudnein;
 
-use Bga\Games\makaucloudnein\States\NewHand;
+use Bga\Games\makaucloudnein\States\GameOn;
 use Bga\GameFramework\Components\Counters\PlayerCounter;
 use Bga\Games\makaucloudnein\Cards\CardManager;
 
@@ -72,8 +72,8 @@ class Game extends \Bga\GameFramework\Table
         $args['player_id'] = $currentPlayerId;
         $args['draw'] = $globals->get('draw') + 0;
         $args['skip'] = $globals->get('skip') + 0;
-        $args["draw_{$currentPlayerId}"] = $globals->get("draw_{$currentPlayerId}");
-        $args["skip_{$currentPlayerId}"] = $globals->get("skip_{$currentPlayerId}");
+        $args['rankpick'] = $globals->get('rankpick');
+        $args['suitpick'] = $globals->get('suitpick');
         $args['suit_demand'] = $globals->get('suit_demand');
         $args['rank_demand'] = $globals->get('rank_demand');
         $args['last_jack'] = $globals->get('last_jack');
@@ -104,6 +104,8 @@ class Game extends \Bga\GameFramework\Table
         $globals->set('drew', 0);
         $globals->set('draw', 0);
         $globals->set('skip', 0);
+        $globals->set('rankpick', 0);
+        $globals->set('suitpick', 0);
         $globals->set('suit_demand', 0);
         $globals->set('rank_demand', 0);
         $globals->set('last_jack', 0);
@@ -141,7 +143,7 @@ class Game extends \Bga\GameFramework\Table
 
         $this->reset();
 
-        return NewHand::class;
+        return GameOn::class;
     }
 
     public function err($currentPlayerId, $message)
