@@ -19,7 +19,7 @@ class Game extends \Bga\GameFramework\Table
         $this->cardManager = new CardManager($this);
         $this->cards = $this->cardManager->cards;
 
-        $this->card_types = [
+        $this->cardTypes = [
             "suits" => [
                 1 => [
                     'name' => clienttranslate('Spade')
@@ -59,26 +59,26 @@ class Game extends \Bga\GameFramework\Table
         $globals = $this->bga->globals;
         $args = [];
 
-        $player_ids = array_keys($this->loadPlayersBasicInfos());
-        $args['player_ids'] = $player_ids;
+        $playerIds = array_keys($this->loadPlayersBasicInfos());
+        $args['playerIds'] = $playerIds;
 
-        for ($i = 0; $i < count($player_ids); $i++) {
-            $player_id = $player_ids[$i];
-            $args["skip_{$player_id}"] = $globals->get("skip_{$player_id}");
-            $args["draw_{$player_id}"] = $globals->get("draw_{$player_id}");
-            $args["hand_{$player_id}"] = $cards->countItemsInLocation(['hand', $player_id]);
+        for ($i = 0; $i < count($playerIds); $i++) {
+            $playerId = $playerIds[$i];
+            $args["skip{$playerId}"] = $globals->get("skip{$playerId}");
+            $args["draw{$playerId}"] = $globals->get("draw{$playerId}");
+            $args["hand{$playerId}"] = $cards->countItemsInLocation(['hand', $playerId]);
         }
 
-        $args['player_id'] = $currentPlayerId;
+        $args['playerId'] = $currentPlayerId;
         $args['draw'] = $globals->get('draw') + 0;
         $args['skip'] = $globals->get('skip') + 0;
-        $args['rankpick'] = $globals->get('rankpick');
-        $args['suitpick'] = $globals->get('suitpick');
-        $args['suit_demand'] = $globals->get('suit_demand');
-        $args['rank_demand'] = $globals->get('rank_demand');
-        $args['last_jack'] = $globals->get('last_jack');
-        $args['fw_player_id'] = $globals->get('fw_player_id');
-        $args['bw_player_id'] = $globals->get('bw_player_id');
+        $args['rankPick'] = $globals->get('rankPick');
+        $args['suitPick'] = $globals->get('suitPick');
+        $args['suitDemand'] = $globals->get('suitDemand');
+        $args['rankDemand'] = $globals->get('rankDemand');
+        $args['lastJack'] = $globals->get('lastJack');
+        $args['fwPlayerId'] = $globals->get('fwPlayerId');
+        $args['bwPlayerId'] = $globals->get('bwPlayerId');
         $args['drew'] = $globals->get('drew');
 
         $args['deck'] = $cards->countItemsInLocation('deck');
@@ -91,24 +91,24 @@ class Game extends \Bga\GameFramework\Table
     public function reset()
     {
         $globals = $this->bga->globals;
-        $player_ids = array_keys($this->loadPlayersBasicInfos());
+        $playerIds = array_keys($this->loadPlayersBasicInfos());
 
-        for ($i = 0; $i < count($player_ids); $i++) {
-            $player_id = $player_ids[$i];
-            $globals->set("draw_{$player_id}", 0);
-            $globals->set("skip_{$player_id}", 0);
+        for ($i = 0; $i < count($playerIds); $i++) {
+            $playerId = $playerIds[$i];
+            $globals->set("draw{$playerId}", 0);
+            $globals->set("skip{$playerId}", 0);
         }
 
-        $globals->set('fw_player_id', $this->getPlayerIdByNo(1));
-        $globals->set('bw_player_id', 0);
+        $globals->set('fwPlayerId', $this->getPlayerIdByNo(1));
+        $globals->set('bwPlayerId', 0);
         $globals->set('drew', 0);
         $globals->set('draw', 0);
         $globals->set('skip', 0);
-        $globals->set('rankpick', 0);
-        $globals->set('suitpick', 0);
-        $globals->set('suit_demand', 0);
-        $globals->set('rank_demand', 0);
-        $globals->set('last_jack', 0);
+        $globals->set('rankPick', 0);
+        $globals->set('suitPick', 0);
+        $globals->set('suitDemand', 0);
+        $globals->set('rankDemand', 0);
+        $globals->set('lastJack', 0);
 
         $this->cardManager->deal();
     }
@@ -120,13 +120,13 @@ class Game extends \Bga\GameFramework\Table
         $this->cards = $this->cardManager->cards;
 
         $gameinfos = $this->getGameinfos();
-        $default_colors = $gameinfos['player_colors'];
+        $defaultColors = $gameinfos['player_colors'];
 
-        foreach ($players as $player_id => $player) {
-            // Now you can access both $player_id and $player array
-            $query_values[] = vsprintf("(%s, '%s', '%s')", [
-                $player_id,
-                array_shift($default_colors),
+        foreach ($players as $playerId => $player) {
+            // Now you can access both $playerId and $player array
+            $queryValues[] = vsprintf("(%s, '%s', '%s')", [
+                $playerId,
+                array_shift($defaultColors),
                 addslashes($player["player_name"])
             ]);
         }
@@ -134,7 +134,7 @@ class Game extends \Bga\GameFramework\Table
         static::DbQuery(
             sprintf(
                 "INSERT INTO `player` (`player_id`, `player_color`, `player_name`) VALUES %s",
-                implode(",", $query_values)
+                implode(",", $queryValues)
             )
         );
 

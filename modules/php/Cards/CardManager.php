@@ -50,7 +50,7 @@ class CardManager
         ];
 
         foreach ($player_ids as $player_id) {
-            $args["hand_{$player_id}"] = 5;
+            $args["hand{$player_id}"] = 5;
         }
 
         foreach ($player_ids as $player_id) {
