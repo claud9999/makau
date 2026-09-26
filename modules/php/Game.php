@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Bga\Games\makaucloudnein;
 
 use Bga\Games\makaucloudnein\States\GameOn;
-use Bga\GameFramework\Components\Counters\PlayerCounter;
 use Bga\Games\makaucloudnein\Cards\CardManager;
 
 class Game extends \Bga\GameFramework\Table
 {
-    public array $card_types;
+    public array $cardTypes;
+    public array $mystate;
 
     public function __construct()
     {
@@ -55,62 +55,50 @@ class Game extends \Bga\GameFramework\Table
 
     protected function getAllDatas(int $currentPlayerId): array
     {
-        $cards = $this->cards;
-        $globals = $this->bga->globals;
-        $args = [];
+        $mystate = json_decode($this->bga->globals->get('state'));
 
-        $playerIds = array_keys($this->loadPlayersBasicInfos());
-        $args['playerIds'] = $playerIds;
+        if ($mystate == null) return $this->reset();
 
-        for ($i = 0; $i < count($playerIds); $i++) {
-            $playerId = $playerIds[$i];
-            $args["skip{$playerId}"] = $globals->get("skip{$playerId}");
-            $args["draw{$playerId}"] = $globals->get("draw{$playerId}");
-            $args["hand{$playerId}"] = $cards->countItemsInLocation(['hand', $playerId]);
-        }
-
-        $args['playerId'] = $currentPlayerId;
-        $args['draw'] = $globals->get('draw') + 0;
-        $args['skip'] = $globals->get('skip') + 0;
-        $args['rankPick'] = $globals->get('rankPick');
-        $args['suitPick'] = $globals->get('suitPick');
-        $args['suitDemand'] = $globals->get('suitDemand');
-        $args['rankDemand'] = $globals->get('rankDemand');
-        $args['lastJack'] = $globals->get('lastJack');
-        $args['fwPlayerId'] = $globals->get('fwPlayerId');
-        $args['bwPlayerId'] = $globals->get('bwPlayerId');
-        $args['drew'] = $globals->get('drew');
-
-        $args['deck'] = $cards->countItemsInLocation('deck');
-        $args['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId]);
-        $args['discards'] = $cards->getItemsInLocation('discard')->values();
-
-        return $args;
+        return $mystate;
     }
 
-    public function reset()
+    public function reset(): array
     {
         $globals = $this->bga->globals;
+        $cards = $this->cards;
+
+        $currentPlayerId = $this->getPlayerIdByNo(1);
         $playerIds = array_keys($this->loadPlayersBasicInfos());
 
+        $mystate = [
+            'playerIds' => $playerIds,
+            'fwPlayerId' => $currentPlayerId,
+            'bwPlayerId' => 0,
+            'draw' => 0,
+            'skip' => 0,
+            'rankPick' => 0,
+            'suitPick' => 0,
+            'rankDemand' => 0,
+            'suitDemand' => 0,
+            'lastJack' => 0,
+            'drew' => 0,
+            'deck' => $cards->countItemsInLocation('deck'),
+            'hand' => $cards->getItemsInLocation(['hand', $currentPlayerId]),
+            'discards' => $cards->getItemsInLocation('discard')->values(),
+        ];
+        
         for ($i = 0; $i < count($playerIds); $i++) {
             $playerId = $playerIds[$i];
-            $globals->set("draw{$playerId}", 0);
-            $globals->set("skip{$playerId}", 0);
+            $mystate["skip{$playerId}"] = 0;
+            $mystate["draw{$playerId}"] = 0;
+            $mystate["hand{$playerId}"] = $cards->countItemsInLocation(['hand', $playerId]);
         }
 
-        $globals->set('fwPlayerId', $this->getPlayerIdByNo(1));
-        $globals->set('bwPlayerId', 0);
-        $globals->set('drew', 0);
-        $globals->set('draw', 0);
-        $globals->set('skip', 0);
-        $globals->set('rankPick', 0);
-        $globals->set('suitPick', 0);
-        $globals->set('suitDemand', 0);
-        $globals->set('rankDemand', 0);
-        $globals->set('lastJack', 0);
+        $globals->set('state', json_encode($mystate));
 
         $this->cardManager->deal();
+
+        return $mystate;
     }
 
     protected function setupNewGame($players, $options = [])

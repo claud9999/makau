@@ -12,7 +12,6 @@ use Bga\GameFramework\UserException;
 use Bga\GameFramework\Actions\Types\IntArrayParam;
 use Bga\GameFramework\NotificationMessage;
 
-
 class GameOn extends GameState
 {
     public function __construct(protected Game $game)
@@ -28,6 +27,7 @@ class GameOn extends GameState
     function onEnteringState()
     {
         $this->gamestate->setAllPlayersMultiactive();
+        $this->mystate = json_decode($this->bga->globals->get('state'));
     }
 
     #[PossibleAction]
@@ -36,28 +36,32 @@ class GameOn extends GameState
         $globals = $this->bga->globals;
         $game = $this->game;
 
-        if ($currentPlayerId != $globals->get('fwPlayerId'))
+        if ($currentPlayerId != $this->mystate['fwPlayerId'])
             return $game->err($currentPlayerId, 'not your turn');
 
-        $skip = $globals->get("skip{$currentPlayerId}") + $globals->get('skip');
+        $skip = $this->mystate["skip{$currentPlayerId}"] + $this->mystate['skip'];
 
         // I have more skips to skip
         if ($skip > 0) {
-            $globals->set("skip{$currentPlayerId}", $skip - 1);
-            $globals->set('skip', 0);
+            $this->mystate["skip{$currentPlayerId}"] = $skip - 1;
+            $this->mystate['skip'] = 0;
         }
 
         // carry draws forward
-        $draw = $globals->get("draw{$currentPlayerId}") + $globals->get('draw');
+        $draw = $this->mystate["draw{$currentPlayerId}"] + $this->mystate['draw'];
         if ($draw > 0) {
-            $globals->set("draw{$currentPlayerId}", $draw);
-            $globals->set('draw', 0);
+            $this->mystate["draw{$currentPlayerId}"] = $draw;
+            $this->mystate['draw'] = 0;
         }
 
         if (!$skip && $draw) return $game->err($currentPlayerId, 'can\'t pass when you have to draw');
-        $globals->set('suitDemand', 0);
+
+        $this->mystate['suitDemand'] = 0;
+
         $fwPlayerId = $this->nextPlayerId($currentPlayerId);
-        $globals->set('fwPlayerId', $fwPlayerId);
+        $this->mystate['fwPlayerId'] = $fwPlayerId;
+
+        $globals->set('state', json_encode($this->mystate));
 
         $game->notify->all(
             'Pass',
@@ -78,9 +82,9 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
-        $draw = $globals->get('bwDraw');
-        $globals->set('bwDraw', 0);
-        $globals->set('bwPlayerId', 0);
+        $draw = $this->mystate['bwDraw'];
+        $this->mystate['bwDraw'] = 0;
+        $this->mystate['bwPlayerId'] = 0;
         $drawnCards = $cards->pickItems($draw, 'deck', ['hand', $currentPlayerId])->values();
 
         $args = [
@@ -97,6 +101,8 @@ class GameOn extends GameState
             ]
         ];
 
+        $globals->set('state', json_encode($this->mystate));
+
         $game->notify->all(
             'DrawCards',
             clienttranslate('${playerName} takes card(s) from the deck'),
@@ -112,26 +118,26 @@ class GameOn extends GameState
         $cards = $game->cards;
 
         // TODO: it's possible I'm both the forward and backward player, how to handle?
-        if ($globals->get('bwPlayerId')) return bwDraw($currentPlayerId);
+        if ($this->mystate['bwPlayerId']) return bwDraw($currentPlayerId);
 
-        $fwPlayerId = $globals->get('fwPlayerId');
+        $fwPlayerId = $this->mystate['fwPlayerId'];
 
         if ($currentPlayerId != $fwPlayerId) return $game->err($currentPlayerId, 'not your turn');
 
-        $draw = $globals->get('draw');
+        $draw = $this->mystate['draw'];
 
-        if ($globals->get('skip') + $globals->get("skip{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'have to skip');
-        if ($globals->get('suitDemand') > 0) return $game->err($currentPlayerId, 'have to match suit');
+        if ($this->mystate['skip'] + $this->mystate["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'have to skip');
+        if ($this->mystate['suitDemand'] > 0) return $game->err($currentPlayerId, 'have to match suit');
 
-        if ($globals->get('drew')) return $game->err($currentPlayerId, 'can only draw once');
+        if ($this->mystate['drew']) return $game->err($currentPlayerId, 'can only draw once');
         $forcedDraw = false;
-        $draw += $globals->get("draw{$currentPlayerId}");
+        $draw += $this->mystate["draw{$currentPlayerId}"];
         if ($draw == 0) $draw = 10;
         else $forcedDraw = true;
 
         $drawnCards = $cards->pickItems($draw, 'deck', ['hand', $currentPlayerId])->values();
 
-        $globals->set('drew', $draw);
+        $this->mystate['drew'] = $draw;
 
         $args = [
             'deck' => $cards->countItemsInLocation('deck'),
@@ -147,13 +153,14 @@ class GameOn extends GameState
         ];
 
         if ($forcedDraw) {
-            $globals->set('draw', 0);
-            $globals->set("draw{$currentPlayerId}", 0);
+            $this->mystate['draw'] = 0;
+            $this->mystate["draw{$currentPlayerId}"] = 0;
 
             $fwPlayerId = $this->nextPlayerId($currentPlayerId);
-            $args['fwPlayerId'] = $fwPlayerId;
-            $globals->set('fwPlayerId', $fwPlayerId);
+            $this->mystate['fwPlayerId'] = $fwPlayerId;
         }
+
+        $globals->set('state', json_encode($this->mystate));
 
         $game->notify->all(
             'DrawCards',
@@ -168,9 +175,9 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
-        if ($currentPlayerId != $globals->get('bwPlayerId')) return $game->err($currentPlayerId, 'not current player');
+        if ($currentPlayerId != $this->mystate['bwPlayerId']) return $game->err($currentPlayerId, 'not current player');
 
-        if ($globals->get("draw{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
+        if ($this->mystate["draw{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'you cannot play');
 
         $discards = $cards->getItemsInLocation('discard');
         $top = $cards->getItemOnTop('discard');
@@ -189,7 +196,7 @@ class GameOn extends GameState
             );
         }
 
-        $draw = $globals->get('draw');
+        $draw = $this->mystate['draw'];
         $drawPlayed = false;
 
         for ($i = 0; $i < count($playedCards); $i++) {
@@ -211,7 +218,7 @@ class GameOn extends GameState
 
         if ($draw > 0) {
             if ($drawPlayed) {
-                $globals->set('draw', $draw);
+                $this->mystate['draw'] = $draw;
             } else {
                 return $game->err($currentPlayerId, 'you must draw');
             }
@@ -222,6 +229,8 @@ class GameOn extends GameState
         for ($i = 0; $i < count($playedCards); $i++) {
             $cards->moveItem($playedCards[$i], 'discard');
         }
+
+        $globals->set('state', json_encode($this->mystate));
 
         $game->notify->all('BWPlayCards', '', [
             'cards' => $playedCards,
@@ -237,11 +246,11 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
-        if ($currentPlayerId == $globals->get('bwPlayerId')) return $this->bwPlay($cardIds, $currentPlayerId);
-        if ($currentPlayerId != $globals->get('fwPlayerId')) return $game->err($currentPlayerId, 'not your turn');
+        if ($currentPlayerId == $this->mystate['bwPlayerId']) return $this->bwPlay($cardIds, $currentPlayerId);
+        if ($currentPlayerId != $this->mystate['fwPlayerId']) return $game->err($currentPlayerId, 'not your turn');
 
-        if ($globals->get("draw{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
-        if ($globals->get("skip{$currentPlayerId}") > 0) return $game->err($currentPlayerId, 'you cannot play');
+        if ($this->mystate["draw{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'you cannot play');
+        if ($this->mystate["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'you cannot play');
 
         $discards = $cards->getItemsInLocation('discard');
         $top = $cards->getItemOnTop('discard');
@@ -260,18 +269,18 @@ class GameOn extends GameState
             );
         }
 
-        $draw = $globals->get('draw');
+        $draw = $this->mystate['draw'];
         $drawPlayed = false;
-        $skip = $globals->get('skip');
+        $skip = $this->mystate['skip'];
         $skipPlayed = false;
-        $suitDemand = $globals->get('suitDemand');
-        $rankDemand = $globals->get('rankDemand');
-        $lastJack = $globals->get('lastJack');
-        $rankpick = 0;
-        $suitpick = 0;
+        $suitDemand = $this->mystate['suitDemand'];
+        $rankDemand = $this->mystate['rankDemand'];
+        $lastJack = $this->mystate['lastJack'];
+        $rankPick = 0;
+        $suitPick = 0;
         $fwPlayerId = $this->nextPlayerId($currentPlayerId);
         $bwPlayerId = 0;
-        $bwdraw = 0;
+        $bwDraw = 0;
 
         for ($i = 0; $i < count($playedCards); $i++) {
             $card = $playedCards[$i];
@@ -281,7 +290,7 @@ class GameOn extends GameState
             }
             if ($card->rank == 13 && $card->suit == 1) {
                 // KS prev draw 5
-                $bwdraw = 5;
+                $bwDraw = 5;
                 $bwPlayerId = $this->prevPlayerId($currentPlayerId);
                 $drawPlayed = true;
             }
@@ -296,23 +305,23 @@ class GameOn extends GameState
             }
             if ($card->rank == 11) {
                 // J demands rank
-                $rankpick = $currentPlayerId;
+                $rankPick = $currentPlayerId;
                 $fwPlayerId = $currentPlayerId;
             }
             if ($card->rank == 14) {
                 // A demands suit
-                $suitpick = $currentPlayerId;
+                $suitPick = $currentPlayerId;
                 $fwPlayerId = $currentPlayerId;
             }
         }
 
         if ($draw > 0) {
-            if ($drawPlayed) $globals->set('draw', $draw);
+            if ($drawPlayed) $this->mystate['draw'] = $draw;
             else return $game->err($currentPlayerId, 'you must draw');
         }
 
         if ($skip > 0) {
-            if ($skipPlayed) $globals->set('skip', $skip);
+            if ($skipPlayed) $this->mystate['skip'] = $skip;
             else return $game->err($currentPlayerId, 'you must pass');
         }
 
@@ -323,21 +332,27 @@ class GameOn extends GameState
         }
 
         if ($suitDemand) {
-            $globals->set('suitDemand', 0);
+            $this->mystate['suitDemand'] = 0;
             $rankDemand = 0;
         }
 
+        $this->mystate['fwPlayerId'] = $fwPlayerId;
+        if ($bwPlayerId > 0) $this->mystate['bwPlayerId'] = $bwPlayerId;
+        if ($rankPick > 0) $this->mystate['rankPick'] = $rankPick;
+        if ($suitPick > 0) $this->mystate['suitPick'] = $suitPick;
+
+        $globals->set('state', json_encode($this->mystate));
 
         $game->notify->all('PlayCards', '', [
             'playerId' => $currentPlayerId,
             'cards' => $playedCards,
             'draw' => $draw,
-            'bwdraw' => $bwdraw,
+            'bwDraw' => $bwDraw,
             'skip' => $skip,
             'suitDemand' => $suitDemand,
             'rankDemand' => $rankDemand,
-            'rankpick' => $rankpick,
-            'suitpick' => $suitpick,
+            'rankPick' => $rankPick,
+            'suitPick' => $suitPick,
             'lastJack' => $lastJack,
             'fwPlayerId' => $fwPlayerId,
             'bwPlayerId' => $bwPlayerId,
@@ -348,14 +363,21 @@ class GameOn extends GameState
     #[PossibleAction]
     public function actPickRank(int $rank, int $currentPlayerId)
     {
-        // TODO: how to identify if the player is picking
         $globals = $this->bga->globals;
-        if ($globals->get('rankpick') != $currentPlayerId) return null;
 
-        $globals->set('rankDemand', $rank);
-        $globals->set('lastJack', $currentPlayerId);
+        if ($this->mystate['rankPick'] != $currentPlayerId) return null;
+
+        $fwPlayerId = $this->nextPlayerId($currentPlayerId);
+
+        $this->mystate['rankDemand'] = $rank;
+        $this->mystate['rankPick'] = 0;
+        $this->mystate['lastJack'] = $currentPlayerId;
+        $this->mystate['fwPlayerId'] = $fwPlayerId;
+
+        $globals->set('state', json_encode($this->mystate));
 
         $this->game->bga->notify->all('RankDemand', '', [
+            'fwPlayerId' => $fwPlayerId,
             'lastJack' => $currentPlayerId,
             'rankDemand' => $rank,
         ]);
@@ -365,12 +387,20 @@ class GameOn extends GameState
     public function actPickSuit(int $suit, int $currentPlayerId)
     {
         $globals = $this->bga->globals;
-        if ($globals->get('suitpick') != $currentPlayerId) return null;
 
-        $globals->set('suitDemand', $suit);
+        if ($this->mystate['suitPick'] != $currentPlayerId) return null;
+
+        $fwPlayerId = $this->nextPlayerId($currentPlayerId);
+
+        $this->mystate['suitDemand'] = $suit;
+        $this->mystate['suitPick'] = 0;
+        $this->mystate['fwPlayerId'] = $fwPlayerId;
+
+        $globals->set('state', json_encode($this->mystate));
 
         $this->game->bga->notify->all('SuitDemand', '', [
-            'suit' => $suit,
+            'fwPlayerId' => $fwPlayerId,
+            'suitDemand' => $suit,
         ]);
     }
 
@@ -414,10 +444,10 @@ class GameOn extends GameState
     {
         $globals = $this->bga->globals;
         $matchingCards = [];
-        $rankDemand = $globals->get('rankDemand');
-        $suitDemand = $globals->get('suitDemand');
-        $draw = $globals->get('draw');
-        $skip = $globals->get('skip');
+        $rankDemand = $this->mystate['rankDemand'];
+        $suitDemand = $this->mystate['suitDemand'];
+        $draw = $this->mystate['draw'];
+        $skip = $this->mystate['skip'];
 
         for ($i = 0; $i < count($cards); $i++) {
             $card = $cards[$i];
@@ -427,7 +457,6 @@ class GameOn extends GameState
                 $skip > 0
                 && $card->rank == 4
             ) $playable = true;
-
 
             if (
                 $draw > 0

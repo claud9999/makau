@@ -24,14 +24,14 @@ export class Game {
 
         this.bga.states.logger = console.log;
 
-        this.card_types = {
+        this.cardTypes = {
             "suit": {
                 1: "Spade",
                 2: "Heart",
                 3: "Club",
                 4: "Diamond",
             },
-            "suit_unicode": {
+            "suitUnicode": {
                 1: "&#9824;",
                 2: "&#9829;",
                 3: "&#9827;",
@@ -57,7 +57,7 @@ export class Game {
     }
 
     tooltip(card) {
-        let r = `${this.card_types["rank"][card.rank]} ${this.card_types["suit_unicode"][card.suit]}`;
+        let r = `${this.cardTypes["rank"][card.rank]} ${this.cardTypes["suitUnicode"][card.suit]}`;
         switch (card.rank) {
             case 2:
                 r += ' (next player draws 2)';
@@ -93,8 +93,8 @@ export class Game {
         this.playerIds = args.playerIds;
         this.skip = args.skip;
         this.draw = args.draw;
-        this.rankPick = args.rankpick;
-        this.drawpick = args.drawpick;
+        this.rankPick = args.rankPick;
+        this.suitPick = args.suitPick;
         this.rankDemand = args.rankDemand;
         this.lastJack = args.lastJack;
         this.drew = args.drew;
@@ -439,7 +439,7 @@ export class Game {
                 if (availableRanks[i] == undefined) continue;
                 this.rankButtons[i] = this.bga.statusBar.addActionButton(_(`${i}`), () => {
                     this.bga.actions.performAction(
-                        'actPick', {
+                        'actPickRank', {
                         rank: i
                     });
                 });
@@ -450,7 +450,6 @@ export class Game {
     }
 
     pickSuit() {
-        debugger;
         this.bga.statusBar.removeActionButtons();
 
         if (this.fwPlayerId == this.playerId) {
@@ -470,7 +469,7 @@ export class Game {
                 // TODO: show emoji of the suit
                 this.suitButtons[i] = this.bga.statusBar.addActionButton(_(`${this.cardTypes["suitUnicode"][i]}`), () => {
                     this.bga.actions.performAction(
-                        'actPick', {
+                        'actPickSuit', {
                         suit: i
                     });
                 });
@@ -481,15 +480,16 @@ export class Game {
     }
 
     async notif_Pass(args) {
-        debugger;
         this.suitDemand = 0;
-        this[`skip${args.fwPlayerId}`] = args.skip;
+        this[`skip${this.fwPlayerId}`] = args.skip;
+        if (args.draw > 0) this[`draw${this.fwPlayerId}`] = args.draw;
+        this.skip = 0;
+        this.draw = 0;
         this.fwPlayerId = args.fwPlayerId;
         this.setPlayOptions();
     }
 
     async notif_DrawCards(args) {
-        debugger;
         this.deck.setCardNumber(args.deck);
         if (args._private) {
             await this.hand.addCards(Array.from(Object.values(args._private.cards)));
@@ -500,7 +500,6 @@ export class Game {
     }
 
     async notif_PlayCards(args) {
-        debugger;
         this.discard.addCards(Array.from(Object.values(args.cards)));
         this.updateHandSize(args.playerId, args.hand_size);
 
@@ -520,21 +519,25 @@ export class Game {
     }
 
     async notif_RankDemand(args) {
-        debugger;
         this.rankDemand = args.rankDemand;
         this.fwPlayerId = args.fwPlayerId;
-        this.pickRank = 0;
+        this.rankPick = 0;
         this.lastJack = args.lastJack;
+
+        this.setPlayOptions();
     }
 
     async notif_SuitDemand(args) {
-        debugger;
         this.suitDemand = args.suitDemand;
-        this.pickSuit = 0;
         this.fwPlayerId = args.fwPlayerId;
+        this.suitPick = 0;
+
+        this.setPlayOptions();
     }
 
     async notif_InvalidPlay(args) {
         this.hand.unselectAll();
+
+        this.setPlayOptions();
     }
 }
