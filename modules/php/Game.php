@@ -10,7 +10,7 @@ use Bga\Games\makaucloudnein\Cards\CardManager;
 class Game extends \Bga\GameFramework\Table
 {
     public array $cardTypes;
-    public array $mystate;
+    public array $st;
 
     public function __construct()
     {
@@ -55,11 +55,12 @@ class Game extends \Bga\GameFramework\Table
 
     protected function getAllDatas(int $currentPlayerId): array
     {
-        $mystate = json_decode($this->bga->globals->get('state'));
-
-        if ($mystate == null) return $this->reset();
-
-        return $mystate;
+        $st = [];
+        if ($this->bga->globals->has('state'))
+            $st = json_decode($this->bga->globals->get('state'), true);
+        else $st = $this->reset();
+        $st['playerId'] = $currentPlayerId;
+        return $st;
     }
 
     public function reset(): array
@@ -70,7 +71,9 @@ class Game extends \Bga\GameFramework\Table
         $currentPlayerId = $this->getPlayerIdByNo(1);
         $playerIds = array_keys($this->loadPlayersBasicInfos());
 
-        $mystate = [
+        $this->cardManager->deal();
+
+        $st = [
             'playerIds' => $playerIds,
             'fwPlayerId' => $currentPlayerId,
             'bwPlayerId' => 0,
@@ -86,19 +89,17 @@ class Game extends \Bga\GameFramework\Table
             'hand' => $cards->getItemsInLocation(['hand', $currentPlayerId]),
             'discards' => $cards->getItemsInLocation('discard')->values(),
         ];
-        
+
         for ($i = 0; $i < count($playerIds); $i++) {
             $playerId = $playerIds[$i];
-            $mystate["skip{$playerId}"] = 0;
-            $mystate["draw{$playerId}"] = 0;
-            $mystate["hand{$playerId}"] = $cards->countItemsInLocation(['hand', $playerId]);
+            $st["skip{$playerId}"] = 0;
+            $st["draw{$playerId}"] = 0;
+            $st["hand{$playerId}"] = $cards->countItemsInLocation(['hand', $playerId]);
         }
 
-        $globals->set('state', json_encode($mystate));
+        $globals->set('state', json_encode($st));
 
-        $this->cardManager->deal();
-
-        return $mystate;
+        return $st;
     }
 
     protected function setupNewGame($players, $options = [])

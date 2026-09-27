@@ -10,6 +10,7 @@ use Bga\Games\makaucloudnein\Cards\Card;
 class CardManager
 {
     public ItemManager $cards;
+    public Game $game;
 
     public function __construct(Game $game)
     {
