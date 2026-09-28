@@ -390,22 +390,18 @@ export class Game {
         if (topCards.length == 0) topCards = this.discard.getCards();
         let top = topCards[topCards.length - 1];
 
-        let skip = this.st[`skip${currentPlayerId}`];
-        let draw = this.st[`draw${currentPlayerId}`];
+        let playableCards = [];
 
-        let playableCards = this.getPlayableCards(top, handCards);
-
-        if (currentPlayerId == this.st.fwPlayerId) {
+        if (this.st.fwPlayerId == currentPlayerId) {
             if (this[`skip${this.st.fwPlayerId}`] > 0) {
                 this.bga.statusBar.setTitle(_('You must skip your turn.'));
                 this.buttonsPass();
-                playableCards = [];
             } else if (this.st[`draw${this.st.fwPlayerId}`] > 0) {
                 this.bga.statusBar.setTitle(_('You must draw cards.'));
                 this.buttonsDraw();
-                playableCards = [];
             } else {
-                if (this['skip']) {
+                if (this.st.fwPlayerId == currentPlayerId && this.st.skip > 0) {
+                    //////////////// pending skips
                     playableCards = this.getSkipCards(handCards);
                     if (playableCards.length > 0) {
                         this.bga.statusBar.setTitle(_('Pick cards to play.'));
@@ -415,7 +411,11 @@ export class Game {
                         this.buttonsPass();
                         playableCards = [];
                     }
-                } else if (this['draw']) {
+                } else if (
+                    this.st.fwPlayerId == currentPlayerId && this.st.draw > 0
+                    || this.st.bwPlayerId == currentPlayerId && this.st.bwDraw > 0
+                ) {
+                    //////////////// pending draws
                     playableCards = this.getDrawCards(handCards);
                     if (playableCards.length > 0) {
                         this.bga.statusBar.setTitle(_('Pick cards to play.'));
@@ -425,32 +425,31 @@ export class Game {
                         this.buttonsDraw();
                         playableCards = [];
                     }
-                } else if (this.play.getCards().length < 1) {
-                    if (playableCards.length < 1) {
-                        this.bga.statusBar.setTitle(_('You have no playable cards.'));
-                        if (
-                            !this.st.drew
-                            && this.st.rankDemand == 0
-                            && this.st.suitDemand == 0
-                        ) this.buttonsDraw();
-                        this.buttonsPass();
-                    } else {
-                        this.bga.statusBar.setTitle(_('Pick cards to play.'));
-                        if (!this.st.drew) this.buttonsDraw();
-                        this.buttonsPass();
-
-                    }
                 } else {
-                    this.bga.statusBar.setTitle(_('Click play when you\'re done...'));
-                    this.buttonsPlay();
-                    this.buttonsPass();
+                    playableCards = this.getPlayableCards(top, handCards);
+                    if (this.play.getCards().length < 1) {
+                        if (playableCards.length < 1) {
+                            this.bga.statusBar.setTitle(_('You have no playable cards.'));
+                            if (
+                                !this.st.drew
+                                && this.st.rankDemand == 0
+                                && this.st.suitDemand == 0
+                            ) this.buttonsDraw();
+                            this.buttonsPass();
+                        } else {
+                            this.bga.statusBar.setTitle(_('Pick cards to play.'));
+                            if (!this.st.drew) this.buttonsDraw();
+                            this.buttonsPass();
+
+                        }
+                    } else {
+                        this.bga.statusBar.setTitle(_('Click play when you\'re done...'));
+                        this.buttonsPlay();
+                        this.buttonsPass();
+                    }
                 }
             }
-        } else if (currentPlayerId == this.st.bwPlayerId) {
-            // TODO: bw_active_player
         } else {
-            this.st.draw = 0;
-            this.st.skip = 0;
             playableCards = [];
 
             this.buttonsMakau();
