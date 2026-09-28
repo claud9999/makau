@@ -400,53 +400,41 @@ export class Game {
                 this.bga.statusBar.setTitle(_('You must draw cards.'));
                 this.buttonsDraw();
             } else {
-                if (this.st.fwPlayerId == currentPlayerId && this.st.skip > 0) {
-                    //////////////// pending skips
+                if ( //////////////// pending skips
+                    this.st.fwPlayerId == currentPlayerId
+                    && this.st.skip > 0
+                ) {
                     playableCards = this.getSkipCards(handCards);
-                    if (playableCards.length > 0) {
-                        this.bga.statusBar.setTitle(_('Pick cards to play.'));
-                        this.buttonsPass();
-                    } else {
-                        this.bga.statusBar.setTitle(_('You must skip your turn.'));
-                        this.buttonsPass();
-                        playableCards = [];
-                    }
-                } else if (
+                } else if ( //////////////// pending draws
                     this.st.fwPlayerId == currentPlayerId && this.st.draw > 0
                     || this.st.bwPlayerId == currentPlayerId && this.st.bwDraw > 0
                 ) {
-                    //////////////// pending draws
                     playableCards = this.getDrawCards(handCards);
-                    if (playableCards.length > 0) {
-                        this.bga.statusBar.setTitle(_('Pick cards to play.'));
-                        this.buttonsPass();
+                } else { //////////////// no pending skips or draws
+                    playableCards = this.getPlayableCards(top, handCards);
+                }
+
+                if (this.play.getCards().length < 1) {
+                    if (playableCards.length < 1) {
+                        this.bga.statusBar.setTitle(_('You have no playable cards.'));
+                        if (
+                            this.st.pass == 0
+                            && this.st.draw == 0
+                            && this.st.drew == 0
+                            && this.st.rankDemand == 0
+                            && this.st.suitDemand == 0
+                        ) this.buttonsDraw();
+                        if (this.st.draw == 0 && this.st.bwPlayerId != currentPlayerId)
+                            this.buttonsPass();
                     } else {
-                        this.bga.statusBar.setTitle(_('You must draw.'));
-                        this.buttonsDraw();
-                        playableCards = [];
+                        this.bga.statusBar.setTitle(_('Pick cards to play.'));
+                        if (!this.st.drew) this.buttonsDraw();
+                        if (this.st.draw == 0 && this.st.bwPlayerId != currentPlayerId)
+                            this.buttonsPass();
                     }
                 } else {
-                    playableCards = this.getPlayableCards(top, handCards);
-                    if (this.play.getCards().length < 1) {
-                        if (playableCards.length < 1) {
-                            this.bga.statusBar.setTitle(_('You have no playable cards.'));
-                            if (
-                                !this.st.drew
-                                && this.st.rankDemand == 0
-                                && this.st.suitDemand == 0
-                            ) this.buttonsDraw();
-                            this.buttonsPass();
-                        } else {
-                            this.bga.statusBar.setTitle(_('Pick cards to play.'));
-                            if (!this.st.drew) this.buttonsDraw();
-                            this.buttonsPass();
-
-                        }
-                    } else {
-                        this.bga.statusBar.setTitle(_('Click play when you\'re done...'));
-                        this.buttonsPlay();
-                        this.buttonsPass();
-                    }
+                    this.bga.statusBar.setTitle(_('Click play when you\'re done...'));
+                    this.buttonsPlay();
                 }
             }
         } else {

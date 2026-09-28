@@ -104,7 +104,7 @@ class GameOn extends GameState
         if ($forcedDraw) {
             $st['draw'] = 0;
             $st["draw{$currentPlayerId}"] = 0;
-            if($st['bwPlayerId'] == $currentPlayerId) {
+            if ($st['bwPlayerId'] == $currentPlayerId) {
                 $st['bwPlayerId'] = 0;
                 $st['bwDraw'] = 0;
             }
@@ -146,6 +146,12 @@ class GameOn extends GameState
         if ($st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'you must pass');
         if (count($cardIds) < 1) return $game->err($currentPlayerId, 'no cards to play');
 
+        $playedCards = [];
+
+        for ($i = 0; $i < count($cardIds); $i++) {
+            $playedCards[] = $cards->getItemById($cardIds[$i]);
+        }
+
         if ($st['skip'] > 0) {
             //////////////// pending skips            
             $playableCards = $this->getSkipCards($playedCards);
@@ -165,18 +171,18 @@ class GameOn extends GameState
                 return $game->err($currentPlayerId, 'you can only add draw cards');
 
             for ($i = 0; $i < count($playableCards); $i++) {
-                switch($playableCards[$i]->rank) {
+                switch ($playableCards[$i]->rank) {
                     case 2:
-                        $this->addToDraw($currentPlayerId, 2);
+                        $this->addToDraw($currentPlayerId, $st, 2);
                         break;
                     case 3:
-                        $this->addToDraw($currentPlayerId, 3);
+                        $this->addToDraw($currentPlayerId, $st, 3);
                         break;
                     case 13:
-                        switch($playableCards[$i]->suit) {
+                        switch ($playableCards[$i]->suit) {
                             case 1: // KS
                             case 2: // KD
-                                $this->addToDraw($currentPlayerId, 5);
+                                $this->addToDraw($currentPlayerId, $st, 5);
                                 break;
                             case 3: // KH
                             case 4: // KC
@@ -187,20 +193,12 @@ class GameOn extends GameState
                                 }
                                 break;
                         }
-                        $st['draw'] += 3;
                         break;
                 }
-                $st['skip']++;
             }
         } else {
             //////////////// no pending skips or draws
             $top = $cards->getItemOnTop('discard');
-            $playedCards = [];
-
-            for ($i = 0; $i < count($cardIds); $i++) {
-                $playedCards[] = $cards->getItemById($cardIds[$i]);
-            }
-
             $playableCards = $this->getPlayableCards($top, $playedCards, $currentPlayerId, $st);
 
             if (count($playableCards) < count($playedCards)) {
@@ -217,8 +215,10 @@ class GameOn extends GameState
             $card = $playedCards[$i];
             switch ($card->rank) {
                 case 2:
+                    $st['draw'] += 2;
+                    break;
                 case 3:
-                    $st['draw'] += $card->rank;
+                    $st['draw'] += 3;
                     break;
                 case 4:
                     $st['skip']++;
@@ -228,6 +228,7 @@ class GameOn extends GameState
                     $st['rankPick'] = $currentPlayerId;
                     $st['lastJack'] = $currentPlayerId;
                     $st['fwPlayerId'] = $currentPlayerId;
+                    break;
                 case 13:
                     switch ($card->suit) {
                         case 1: // KS back draw 5
@@ -335,7 +336,7 @@ class GameOn extends GameState
         $matchingCards = [];
 
         for ($i = 0; $i < count($cards); $i++) {
-            switch($cards[$i]->rank) {
+            switch ($cards[$i]->rank) {
                 case 2:
                 case 3:
                 case 13:
@@ -352,17 +353,14 @@ class GameOn extends GameState
         $matchingCards = [];
 
         for ($i = 0; $i < count($cards); $i++) {
-            switch($cards[$i]->rank) {
-                case 4:
-                    $matchingCards[] = $card;
-                    break;
-            }
+            if ($cards[$i]->rank == 4)
+                $matchingCards[] = $cards[$i];
         }
 
         return $matchingCards;
     }
 
-    function addToDraw($i, $currentPlayerId)
+    function addToDraw($i, $st, $currentPlayerId)
     {
         if ($st['fwPlayerId'] == $currentPlayerId)
             $st['draw'] += $i;
