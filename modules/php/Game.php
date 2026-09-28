@@ -60,6 +60,7 @@ class Game extends \Bga\GameFramework\Table
             $st = json_decode($this->bga->globals->get('state'), true);
         else $st = $this->reset();
         $st['playerId'] = $currentPlayerId;
+        $st['hand'] = $this->cards->getItemsInLocation(['hand', $currentPlayerId])->values();
         return $st;
     }
 
@@ -78,15 +79,16 @@ class Game extends \Bga\GameFramework\Table
             'fwPlayerId' => $currentPlayerId,
             'bwPlayerId' => 0,
             'draw' => 0,
+            'bwDraw' => 0,
             'skip' => 0,
             'rankPick' => 0,
             'suitPick' => 0,
             'rankDemand' => 0,
             'suitDemand' => 0,
             'lastJack' => 0,
+            'battleKing' => 0,
             'drew' => 0,
             'deck' => $cards->countItemsInLocation('deck'),
-            'hand' => $cards->getItemsInLocation(['hand', $currentPlayerId]),
             'discards' => $cards->getItemsInLocation('discard')->values(),
         ];
 

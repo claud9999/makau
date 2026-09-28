@@ -68,14 +68,30 @@ export class Game {
             case 4:
                 r += ' (skip next player)';
                 break;
-            case 11:
+            case 11: // J
                 r += ' (demand non-action rank of other players)';
                 break;
-            case 12:
-                r += ' (anything on queen, queen on anything)';
+            case 12: // Q
+                r += ' (anything on Q, Q on anything)';
+                break;
+            case 13: // K
+                switch (card.suit) {
+                    case 1: // S
+                        r += ' (next player draws 5)';
+                        break;
+                    case 2: // H
+                        r += ' (prev player draws 5)';
+                        break;
+                    case 3: // C
+                        r += ' (blocks K)';
+                        break;
+                    case 4: // D
+                        r += ' (blocks K)';
+                        break;
+                }
                 break;
             case 14:
-                r += ' (demand next player play suit)';
+                r += ' (wild, demand next player play suit)';
                 break;
             case 15:
                 r += ' (can be played as any card at any time)';
@@ -189,6 +205,7 @@ export class Game {
                     cardOverlap: 75
                 }
             );
+            this.updateHandSize(playerId, args[`hand${playerId}`]);
         }
 
         this.hand = new BgaCards.HandStock(
@@ -378,7 +395,11 @@ export class Game {
                             playableCards = [];
                         } else {
                             this.bga.statusBar.setTitle(_('You have no playable cards.'));
-                            if (!this.st.drew) this.buttonsDraw();
+                            if (
+                                !this.st.drew
+                                && this.st.rankDemand == 0
+                                && this.st.suitDemand == 0
+                            ) this.buttonsDraw();
                             this.buttonsPass();
                         }
                     } else {
@@ -390,7 +411,6 @@ export class Game {
                 } else {
                     this.bga.statusBar.setTitle(_('Click play when you\'re done...'));
                     this.buttonsPlay();
-                    if (!this.st.drew) this.buttonsDraw();
                     this.buttonsPass();
                 }
             }
@@ -506,7 +526,9 @@ export class Game {
         if (args._private) {
             await this.hand.addCards(Array.from(Object.values(args._private.cards)));
             this.st.drew = 1;
-        }
+        } else
+            this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
+
         this.st.draw = 0;
         this.setPlayOptions();
     }

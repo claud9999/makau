@@ -60,8 +60,7 @@ class GameOn extends GameState
 
         $st['suitDemand'] = 0;
 
-        $fwPlayerId = $this->nextPlayerId($currentPlayerId);
-        $st['fwPlayerId'] = $fwPlayerId;
+        $st['fwPlayerId'] = $this->nextPlayerId($currentPlayerId);
         $st['drew'] = 0;
 
         $globals->set('state', json_encode($st));
@@ -122,7 +121,7 @@ class GameOn extends GameState
         $st = json_decode($this->bga->globals->get('state'), true);
 
         // TODO: it's possible I'm both the forward and backward player, how to handle?
-        if ($st['bwPlayerId']) return bwDraw($currentPlayerId);
+        if ($st['bwPlayerId']) return $this->bwDraw($currentPlayerId);
 
         if ($currentPlayerId != $st['fwPlayerId']) return $game->err($currentPlayerId, 'not your turn');
 
@@ -234,11 +233,6 @@ class GameOn extends GameState
         $globals->set('state', json_encode($st));
 
         $st['playerId'] = $currentPlayerId;
-        $st['_private'] = [
-            $currentPlayerId => [
-                'cards' => $drawnCards
-            ]
-        ];
         $st['cards'] = $playedCards;
 
         $game->notify->all('BWPlayCards', '', $st);
@@ -261,6 +255,11 @@ class GameOn extends GameState
 
         if ($st["draw{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'you cannot play');
         if ($st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'you cannot play');
+        if (count($cardIds) < 1) return $game->err($currentPlayerId, 'no cards to play');
+
+        $draw = $st['draw']; // used to see if adding draw
+        $skip = $st['skip']; // used to see if adding skip
+        $bwDraw = $st['bwDraw']; // used to see if adding bwDraw
 
         $top = $cards->getItemOnTop('discard');
         $playedCards = [];
@@ -278,47 +277,68 @@ class GameOn extends GameState
             );
         }
 
-        $drawPlayed = false;
-        $skipPlayed = false;
         $st['fwPlayerId'] = $this->nextPlayerId($currentPlayerId);
-        $st['bwDraw'] = 0;
 
         for ($i = 0; $i < count($playedCards); $i++) {
             $card = $playedCards[$i];
-            if ($card->rank == 2 || $card->rank == 3) {
-                $st['draw'] += $card->rank;
-                $drawPlayed = true;
-            }
-            if ($card->rank == 13 && $card->suit == 1) {
-                // KS prev draw 5
-                $st['bwDraw'] = 5;
-                $st['bwPlayerId'] = $this->prevPlayerId($currentPlayerId);
-                $drawPlayed = true;
-            }
-            if ($card->rank == 13 && $card->suit == 2) {
-                // KH draw 5
-                $st['draw'] += 5;
-                $drawPlayed = true;
-            }
-            if ($card->rank == 4) {
-                $st['skip'] += 1;
-                $skipPlayed = true;
-            }
-            if ($card->rank == 11) {
-                // J demands rank
-                $st['rankPick'] = $currentPlayerId;
-                $st['lastJack'] = $currentPlayerId;
-                $st['fwPlayerId'] = $currentPlayerId;
-            }
-            if ($card->rank == 14) {
-                // A demands suit
-                $st['suitPick'] = $currentPlayerId;
-                $st['fwPlayerId'] = $currentPlayerId;
+            switch ($card->rank) {
+                case 2:
+                case 3:
+                    $draw += $card->rank;
+                    break;
+                case 4:
+                    $skip++;
+                    break;
+                case 11:
+                    // J demands rank
+                    $st['rankPick'] = $currentPlayerId;
+                    $st['lastJack'] = $currentPlayerId;
+                    $st['fwPlayerId'] = $currentPlayerId;
+                case 13:
+                    switch ($card->suit) {
+                        case 1: // KS back draw 5
+                            // KS prev draw 5
+                            $bwDraw += 5;
+                            if ($st['bwDraw'] == 0) {
+                                // new backward draw
+                                $st['bwPlayerId'] = $this->prevPlayerId($currentPlayerId);
+                                $st['battleKing'] = $currentPlayerId;
+                            }
+                            // else I am adding to the backward draw
+                            break;
+                        case 2: // KH draw 5
+                            if ($st['draw']) {
+                                $draw += 5; // adds to forward draw?
+                                $st['battleKing'] = $currentPlayerId;
+                            }
+                            break;
+                        case 3:
+                        case 4:
+                            // KD KC blocks draws
+                            if ($st['battleKing'] > 0) {
+                                $draw = 0;
+                                $bwDraw = 0;
+                                $st['bwPlayerId'] = 0;
+                            }
+                            break;
+                    }
+                    break;
+                case 14:
+                    // A demands suit
+                    $st['suitPick'] = $currentPlayerId;
+                    $st['fwPlayerId'] = $currentPlayerId;
+                    break;
             }
         }
 
-        if ($st['draw'] > 0 && !$drawPlayed) return $game->err($currentPlayerId, 'you must draw');
-        if ($st['skip'] > 0 && !$skipPlayed) return $game->err($currentPlayerId, 'you must pass');
+        // not adding to draw
+        if ($draw > 0 && $draw == $st['draw']) return $game->err($currentPlayerId, 'you must draw');
+
+        // not adding to backward draw
+        if ($bwDraw > 0 && $bwDraw == $st['bwDraw']) return $game->err($currentPlayerId, 'you must draw');
+
+        // not adding to skip
+        if ($skip > 0 && $skip == $st['skip']) return $game->err($currentPlayerId, 'you must pass');
 
         // valid play, move the cards to the discard pile
         // one at a time to maintain order
@@ -330,6 +350,9 @@ class GameOn extends GameState
             $st['suitDemand'] = 0;
         }
 
+        $st['draw'] = $draw;
+        $st['skip'] = $skip;
+        $st['bwDraw'] = $bwDraw;
         $st['drew'] = 0;
 
         $globals->set('state', json_encode($st));
@@ -435,7 +458,7 @@ class GameOn extends GameState
                 && (
                     $card->rank == 2
                     || $card->rank == 3
-                    //                    || $card->rank == 13 && $card->suit == 1 // KS
+                    || $card->rank == 13 && $card->suit == 1 // KS
                     || $card->rank == 13 && $card->suit == 2 // KH
                 )
             )
