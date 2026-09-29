@@ -196,18 +196,88 @@ class GameOn extends GameState
                         break;
                 }
             }
+        } else if ($st['rankDemand']) {
+            //////////////// rank demand
+            $playableCards = [];
+            for ($i = 0; $i < count($playedCards); $i++) {
+                $card = $playedCards[$i];
+                if (
+                    $card->rank == $st['rankDemand']
+                    || $card->rank == 11
+                )
+                    $playableCards[] = $card;
+            }
+        } else if ($st['suitDemand']) {
+            //////////////// suit demand
+            $playableCards = [];
+            for ($i = 0; $i < count($playedCards); $i++) {
+                $card = $playedCards[i];
+                if (
+                    $card->suit == $st['suitDemand']
+                    && $card->rank > 4
+                    && $card->rank < 11
+                )
+                    $playableCards[] = $card;
+            }
         } else {
-            //////////////// no pending skips or draws
-            $top = $cards->getItemOnTop('discard');
-            $playableCards = $this->getPlayableCards($top, $playedCards, $currentPlayerId, $st);
+            //////////////// no pending demands
+            $demand = '';
 
-            if (count($playableCards) < count($playedCards)) {
+            //////////////// check that there are, at most, one demand type
+            for ($i = 0; $i < count($playedCards); $i++) {
+                $card = $playedCards[$i];
+
+                $newdemand = $demand;
+
+                switch ($card->rank) {
+                    case 2:
+                    case 3:
+                        $newdemand = 'draw';
+                        break;
+                    case 4:
+                        $newdemand = 'skip';
+                        break;
+                    case 11: // J
+                        $newdemand = 'rank';
+                        break;
+                    case 13: // K
+                        if ($card->suit < 3) $newdemand = 'draw';
+                        break;
+                    case 14: // A
+                        $newdemand = 'suit';
+                        break;
+                }
+
+                if ($demand != '' && $newdemand != $demand)
+                    return $game->err($currentPlayerId, 'You cannot play multiple demands');
+
+                $demand = $newdemand;
+            }
+
+            $top = $cards->getItemOnTop('discard');
+
+            //////////////// check that the cards are actually playable
+            for ($i = 0; $i < count($playedCards); $i++) {
+                $card = $playedCards[$i];
+
+                if (
+                    $card->rank != 14 // A = wild
+                    && $card->rank != 12 // Q = wild
+                    && $card->suit != $top->suit
+                    && $card->rank != $top->rank
+                    && $top->rank != 12 // wild = Q
+                ) 
                 return $game->err(
                     $currentPlayerId,
-                    'You cannot play ' . $this->getCardName($playedCards[count($playableCards)])
+                    'You cannot play ' . $this->getCardName($card) . ' top=' . $this->getCardName($top) 
                 );
+
+                $playableCards[] = $card;
+                $top = $card;
             }
         }
+
+        //////////// valid play, enact
 
         $st['fwPlayerId'] = $this->nextPlayerId($currentPlayerId);
 
@@ -262,7 +332,7 @@ class GameOn extends GameState
                     break;
             }
         }
-        // valid play, move the cards to the discard pile
+        // move the cards to the discard pile
         // one at a time to maintain order
         for ($i = 0; $i < count($playedCards); $i++) {
             $cards->moveItem($playedCards[$i], 'discard');
@@ -366,80 +436,6 @@ class GameOn extends GameState
             $st['draw'] += $i;
         if ($st['bwPlayerId'] == $currentPlayerId)
             $st['bwDraw'] += $i;
-    }
-
-    /* Logic:
-    If there is a "draw demand", the only cards the current player can play is another draw card.
-    If there is a "skip demand", the only cards the current player can play is another skip card.
-    If the previous card was an A and a suit was called, only that suit can be played. If "Free" was called, any non-action card.
-    If the a player played a J and a rank was called, only that rank can be played, or another J. If "Any" was called, any non-action card or another J.
-    If no skip and no draw demanded, play matching suit or rank or a wild card (A, Q).
-
-    Jokers, when played, are declared as to what kind of card they represent.
-
-    Should match getPlayableCards in Game.js
-    */
-    function getPlayableCards($top, $cards, $currentPlayerId, $st): array
-    {
-        $globals = $this->bga->globals;
-        $matchingCards = [];
-
-        for ($i = 0; $i < count($cards); $i++) {
-            $card = $cards[$i];
-            $playable = false;
-
-            if (
-                $st['rankDemand'] > 0
-                && $st['rankDemand'] < 20 // any
-                &&
-                (
-                    $card->rank == $st['rankDemand']
-                    || $card->rank == 11
-                )
-            )
-                $playable = true;
-
-            if (
-                $st['suitDemand'] > 0
-                && $st['suitDemand'] < 20
-                && $card->suit == $st['suitDemand']
-                && $card->rank > 4 // only non-action
-                && $card->rank < 11
-            )
-                $playable = true;
-
-            if (
-                (
-                    $st['rankDemand'] == 20
-                    || $st['suitDemand'] == 20
-                )
-                && $card->rank > 4
-                && $card->rank < 11
-            )
-                $playable = true;
-
-            if (
-                $st['rankDemand'] == 0
-                && $st['suitDemand'] == 0
-                && $st['battleKing'] == 0
-                &&
-                (
-                    $card->rank == 14 // A wild
-                    || $card->rank == 12 // Q wild
-                    || $card->suit == $top->suit
-                    || $card->rank == $top->rank
-                    || $top->rank == 12 // wild Q
-                )
-            )
-                $playable = true;
-
-            if ($playable) {
-                $matchingCards[] = $card;
-                $top = $card;
-            }
-        }
-
-        return $matchingCards;
     }
 
     function getCardName($card): string

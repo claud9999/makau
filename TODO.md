@@ -4,13 +4,8 @@
 * Jokers
 * KS -- does this "spawn" a counter-clockwise play path?
 * Makau button
-* "Any" suit and "Any" rank options
 * enforce rules
 * test 3 and 4 players
-
-# BUGS
-
-* only allow one sort of demand (draw, skip, suit, or rank)
 
 # scenarios
 
@@ -33,3 +28,7 @@ four players
 P3: plays KS, 4S
 P2: plays 2C
 P4: skips
+
+## Five
+P1: plays 2H, JC, demands rank 6
+P2: has 3S, can he play it or what happens?
