@@ -260,20 +260,46 @@ class GameOn extends GameState
             for ($i = 0; $i < count($playedCards); $i++) {
                 $card = $playedCards[$i];
 
-                if (
-                    $card->rank != 14 // A = wild
-                    && $card->rank != 12 // Q = wild
-                    && $card->suit != $top->suit
-                    && $card->rank != $top->rank
-                    && $top->rank != 12 // wild = Q
-                ) 
-                return $game->err(
-                    $currentPlayerId,
-                    'You cannot play ' . $this->getCardName($card) . ' top=' . $this->getCardName($top) 
-                );
+                if ($demand != '') {
+                    switch ($card->rank) {
+                        case 2:
+                            if ($demand != 'draw') return $game->err($currentPlayerId, 'You cannot play a two when another demand is in play');
+                            break;
+                        case 3:
+                            if ($demand != 'draw') return $game->err($currentPlayerId, 'You cannot play a three when another demand is in play');
+                            break;
+                        case 4:
+                            if ($demand != 'skip') return $game->err($currentPlayerId, 'You cannot play a four when another demand is in play');
+                            break;
+                        case 11: // J
+                            if ($demand != 'rank') return $game->err($currentPlayerId, 'You cannot play a jack when another demand is in play');
+                            break;
+                        case 13: // K
+                            if ($demand != 'draw') return $game->err($currentPlayerId, 'You cannot play a king when another demand is in play');
+                            break;
+                        case 14: // A
+                            if ($demand != 'suit') return $game->err($currentPlayerId, 'You cannot play an ace when another demand is in play');
+                            break;
+                    }
+                }
 
-                $playableCards[] = $card;
-                $top = $card;
+                if (
+                    $demand == 'draw' && ($card->rank < 4 || $card->rank == 13)
+                    || $demand = 'skip' && $card->rank == 4
+                    || $card->rank == 14 // A = wild
+                    || $card->rank == 12 // Q = wild
+                    || $card->suit == $top->suit
+                    || $card->rank == $top->rank
+                    || $top->rank == 12 // wild = Q
+                ) {
+                    $playableCards[] = $card;
+                    $top = $card;
+                } else {
+                    return $game->err(
+                        $currentPlayerId,
+                        'You cannot play ' . $this->getCardName($card) . ' top=' . $this->getCardName($top)
+                    );
+                }
             }
         }
 
