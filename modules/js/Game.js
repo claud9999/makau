@@ -109,22 +109,21 @@ export class Game {
         this.bga.gameArea.getElement().insertAdjacentHTML(
             "beforeend",
             `
-                    <div id="table" class="table" height="200px">
+                    <div id="table" class="table" width="100%">
                         <div id="otherstuff">
-                            <div id="deck_block" class="whiteblock">
+                            <div id="deck_block" class="deck">
                                 <b id="deck_label">${_("Deck")}</b><br/>
-                                <div id="deck"></div>
+                                <span id="deck"></span>
                             </div>
-                            <div id="discard_block" class="whiteblock">
+                            <div id="discard_block" class="discard">
                                 <b id="discard_label">${_("Discards")}</b><br/>
-                                <div id="discard"></div>
+                                <span id="discard">zzzzzzz</span>
                             </div>
-                            <div id="play_block">
-                                <b id="play_label"></b>
-                                <div id="play"></div>
+                            <div id="play_block" class="play">
+                                <span id="play">play</span>
                             </div>
-                        </div>
-                        <div id="otherplayers" class="player_blocks">
+                        </div><br/>
+                        <div id="otherplayers">
             `
         );
 
@@ -136,10 +135,10 @@ export class Game {
             this.bga.gameArea.getElement().insertAdjacentHTML(
                 "beforeend",
                 `
-                        <div class="player_block">
+                        <div class="player_block" class="player">
                             <b id="hand${playerId}_label">${this.bga.players.getPlayerById(playerId).name}'s hand</b><br/>
-                        <div id="hand${playerId}" class="whiteblock"></div><br/>
-                        <div id="makau${playerId}"></div>
+                        <span id="hand${playerId}""></span><br/>
+                        <span id="makau${playerId}"></span>
                         </div>
                 `
             );
@@ -150,10 +149,10 @@ export class Game {
             "beforeend",
             `
                     </div><!-- close otherplayers -->
-                    <div id="hand_block">
+                    <div id="hand_block" class="hand">
                         <b id="hand_label">${_("My hand")}</b>
-                        <div id="hand"></div><br/>
-                        <div id="makau${this.playerId}"></div>
+                        <span id="hand"></span><br/>
+                        <span id="makau${this.playerId}"></span>
                     </div>
                 </div><!-- close table -->
             `
