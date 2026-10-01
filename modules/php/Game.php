@@ -97,6 +97,7 @@ class Game extends \Bga\GameFramework\Table
             $st["skip{$playerId}"] = 0;
             $st["draw{$playerId}"] = 0;
             $st["hand{$playerId}"] = $cards->countItemsInLocation(['hand', $playerId]);
+            $st["makau{$playerId}"] = 0;
         }
 
         $globals->set('state', json_encode($st));

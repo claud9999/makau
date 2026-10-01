@@ -108,6 +108,7 @@ class GameOn extends GameState
                 $st['bwPlayerId'] = 0;
                 $st['bwDraw'] = 0;
             }
+            $st['battleKing'] = 0;
             $st['drew'] = 0;
 
             $st['fwPlayerId'] = $this->nextPlayerId($currentPlayerId);
@@ -339,7 +340,7 @@ class GameOn extends GameState
                             break;
                         case 3:
                         case 4:
-                            // KD KC blocks draws
+                            // KD KC blocks battle kings
                             if ($st['battleKing'] > 0) {
                                 if ($st['fwPlayerId'] == $currentPlayerId)
                                     $st['draw'] = 0;
@@ -364,9 +365,14 @@ class GameOn extends GameState
             $cards->moveItem($playedCards[$i], 'discard');
         }
 
+        $st["hand{$currentPlayerId}"] = $cards->countItemsInLocation(['hand', $currentPlayerId]);
+
         if ($st['suitDemand']) {
             $st['suitDemand'] = 0;
         }
+
+        if ($st['battleKing'] != 0 && $st['battleKing'] != $currentPlayerId)
+            $st['battleKing'] = 0;
 
         $st['drew'] = 0;
 
@@ -379,7 +385,6 @@ class GameOn extends GameState
 
         $st['playerId'] = $currentPlayerId;
         $st['cards'] = $playedCards;
-        $st['handSize'] = $cards->countItemsInLocation(['hand', $currentPlayerId]);
 
         $game->notify->all('PlayCards', '', $st);
     }
@@ -400,7 +405,7 @@ class GameOn extends GameState
 
         $this->bga->globals->set('state', json_encode($st));
 
-        $this->game->bga->notify->all('StateUpdate', 'Rank selected', $st);
+        $this->game->bga->notify->all('Selected', 'Rank selected', $st);
     }
 
     #[PossibleAction]
@@ -418,7 +423,38 @@ class GameOn extends GameState
 
         $this->bga->globals->set('state', json_encode($st));
 
-        $this->game->bga->notify->all('StateUpdate', 'Suit selected', $st);
+        $this->game->bga->notify->all('Selected', 'Suit selected', $st);
+    }
+
+
+    #[PossibleAction]
+    public function actMakau(int $currentPlayerId, int $onPlayerId)
+    {
+        $st = json_decode($this->bga->globals->get('state'), true);
+
+        if ($st["makau{$onPlayerId}"] > 0) return;
+
+        $st["makau{$onPlayerId}"] = $onPlayerId;
+
+        if ($currentPlayerId != $onPlayerId) {
+            $drawnCards = $cards->pickItems(5, 'deck', ['hand', $onPlayerId])->values();
+            $st['deck'] = $cards->countItemsInLocation('deck');
+            $st["hand{$onPlayerId}"] = $cards->countItemsInLocation(['hand', $onPlayerId]);
+        } else {
+            $drawnCards = [];
+        }
+
+        $this->bga->globals->set('state', json_encode($st));
+
+        $st['onPlayerId'] = $onPlayerId;
+        if (count($drawnCards) > 0)
+            $st['_private'] = [
+                $onPlayerId => [
+                    'cards' => $drawnCards
+                ]
+            ];
+
+        $this->game->bga->notify->all('CalledMakau', 'called makau', $st);
     }
 
     public function zombie(int $playerId)

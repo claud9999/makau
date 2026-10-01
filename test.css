@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+:root {
+  --h-card-width: 100px;
+  --h-card-height: 135px;
+}
+
+.hand {
+  width: 55%;
+  height: calc(var(--h-card-height) * 1.2);
+  background-color: yellow;
+  float: right;
+}
+
+.deck {
+  width: calc(var(--h-card-width) * 1.2);
+  height: calc(var(--h-card-height) * 1.2);
+  float: left;
+  background-color: gray;
+}
+
+.player {
+  width: 15%;
+  height: calc(var(--h-card-height) * 1.2);
+  float: left;
+  background-color: red;
+}
+
+.discard {
+  width: calc(70% - var(--h-card-width) * 1.2);
+  height: calc(var(--h-card-height) * 1.2);
+  background-color: blue;
+  float: left;
+}
+
+.play {
+  width: 30%;
+  height: calc(var(--h-card-height) * 1.2);
+  background-color: green;
+  float: right;
+}
+</style>
+</head>
+<body>
+
+<div class="deck">this is a deck</div>
+<div class="discard">discards</div>
+<div class="play">play</div>
+<br/>
+<div class="player">player 1</div>
+<div class="player">player 2</div>
+<div class="player">player 3</div>
+<div class="hand">hand</div>
+<br/>
+
+</body>
+</html>

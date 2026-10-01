@@ -18,12 +18,11 @@
 }
 
 #hand_block {
-  width: 100%;
+  width: 55%;
   height: calc(var(--h-card-height) * 1.2);
 }
 
 #hand {
-  position: flex;
   width: 100%;
   height: calc(var(--h-card-height) * 1.2);
 }
@@ -47,7 +46,7 @@
 #discard_block {
   width: 50%;
   height: calc(var(--h-card-height) * 1.2);
-  float: left;
+  float: right;
 }
 
 #play_block {
@@ -62,9 +61,8 @@
 }
 
 .player_block {
-  width: 33%;
-  height: var(--h-card-height);
-  float: left;
+  width: 15%;
+  height: calc(var(--h-card-height) * 1.2);
 }
 
 #discard {

@@ -111,12 +111,12 @@ export class Game {
             `
                     <div id="table" class="table" height="200px">
                         <div id="otherstuff">
-                            <div id="deck_block" bgcolor="green">
-                                <b id="deck_label">${_("Deck")}</b>
+                            <div id="deck_block" class="whiteblock">
+                                <b id="deck_label">${_("Deck")}</b><br/>
                                 <div id="deck"></div>
                             </div>
-                            <div id="discard_block" bgcolor="yellow">
-                                <b align="left" id="discard_label">${_("Discard pile")}</b>
+                            <div id="discard_block" class="whiteblock">
+                                <b id="discard_label">${_("Discards")}</b><br/>
                                 <div id="discard"></div>
                             </div>
                             <div id="play_block">
@@ -136,8 +136,10 @@ export class Game {
             this.bga.gameArea.getElement().insertAdjacentHTML(
                 "beforeend",
                 `
-                        <div id="hand${playerId}" class="player_block">
-                            <b id="hand${playerId}_label">${this.bga.players.getPlayerById(playerId).name}'s hand</b>
+                        <div class="player_block">
+                            <b id="hand${playerId}_label">${this.bga.players.getPlayerById(playerId).name}'s hand</b><br/>
+                        <div id="hand${playerId}" class="whiteblock"></div><br/>
+                        <div id="makau${playerId}"></div>
                         </div>
                 `
             );
@@ -150,7 +152,8 @@ export class Game {
                     </div><!-- close otherplayers -->
                     <div id="hand_block">
                         <b id="hand_label">${_("My hand")}</b>
-                        <div id="hand"></div>
+                        <div id="hand"></div><br/>
+                        <div id="makau${this.playerId}"></div>
                     </div>
                 </div><!-- close table -->
             `
@@ -191,21 +194,36 @@ export class Game {
             counter: {
                 position: 'center',
                 extraClasses: 'text-shadow'
-            }
+            },
         });
 
         for (let i = 0; i < args.playerIds.length; i++) {
             let playerId = args.playerIds[i];
             if (playerId == this.bga.players.getCurrentPlayerId()) continue;
 
-            this[`hand${playerId}`] = new BgaCards.HandStock(
+            let hsName = `hand${playerId}`;
+
+            let hs = new BgaCards.HandStock(
                 this.cardsManager,
                 document.getElementById(`hand${playerId}`),
                 {
                     cardOverlap: 75
                 }
             );
-            this.updateHandSize(playerId, args[`hand${playerId}`]);
+            this[hsName] = hs;
+
+            this[`makauButton${playerId}`] = this.bga.statusBar.addActionButton(
+                _('Makau'),
+                () => {
+                    this.callMakau(this.playerId, playerId);
+                },
+                {
+                    'destination': document.getElementById(`makau${playerId}`),
+
+                }
+            );
+
+            this.updateHandSize(playerId, args[hsName]);
         }
 
         this.hand = new BgaCards.HandStock(
@@ -254,31 +272,36 @@ export class Game {
         this.setPlayOptions();
     }
 
-    buttonsPlay() {
+    enablePlay() {
         this.playButton = this.bga.statusBar.addActionButton(_('Play'), () => {
             this.bga.actions.performAction(
                 'actPlay', {
                 cardIds: this.play.getCards().map((card) => card.id)
             });
+            this.hand.setSelectionMode('none');
         });
     }
 
-    buttonsDraw() {
+    enableDraw() {
         this.drawButton = this.bga.statusBar.addActionButton(_('Draw'), () => {
             this.hand.addCards(this.play.getCards());
             this.bga.actions.performAction('actDraw');
+            this.hand.setSelectionMode('none');
         });
+        this.deck.setSelectionMode('single');
+        this.deck.onCardClick = () => {
+            this.hand.addCards(this.play.getCards());
+            this.bga.actions.performAction('actDraw');
+            this.hand.setSelectionMode('none');
+        }
     }
 
-    buttonsPass() {
+    enablePass() {
         this.passButton = this.bga.statusBar.addActionButton(_('Pass'), () => {
             this.hand.addCards(this.play.getCards());
             this.bga.actions.performAction('actPass');
+            this.hand.setSelectionMode('none');
         });
-    }
-
-    buttonsMakau() {
-        this.makauButton = this.bga.statusBar.addActionButton(_('Makau'), () => this.bga.actions.performAction('actMakau'));
     }
 
     updateHandSize(playerId, count) {
@@ -293,6 +316,15 @@ export class Game {
                 rank: 0
             });
         }
+    }
+
+    callMakau(activePlayerId, onPlayerId) {
+        if (this.st[`hand${this.st.playerIds[i]}`] <= 1)
+            return this.bga.actions.performAction('actMakau',
+                {
+                    'currentPlayerId': this.st.playerId,
+                    'onPlayerId': this.st.playerIds[i],
+                });
     }
 
     setPlayOptions() {
@@ -319,7 +351,7 @@ export class Game {
         if (st[`draw${st.fwPlayerId}`] > 0) {
             ////////////////////// must draw
             setTitle(_('You must draw cards.'));
-            this.buttonsDraw();
+            this.enableDraw();
             hand.setSelectionMode('single', []);
             return;
         }
@@ -336,7 +368,7 @@ export class Game {
             if (playCards.length > 0) {
                 statusBar.setTitle('Click play when ready.');
                 hand.setSelectionMode('single', playableCards);
-                this.buttonsPlay();
+                this.enablePlay();
                 return;
             }
 
@@ -346,7 +378,7 @@ export class Game {
             } else {
                 statusBar.setTitle('You must draw.');
             }
-            this.buttonsDraw();
+            this.enableDraw();
             return;
         }
 
@@ -369,7 +401,7 @@ export class Game {
         if (this[`skip${st.fwPlayerId}`] > 0) {
             ////////////////////// must skip
             statusBar.setTitle(_('You must skip your turn.'));
-            this.buttonsPass();
+            this.enablePass();
             hand.setSelectionMode('single', []);
             return;
         }
@@ -385,7 +417,7 @@ export class Game {
             if (playCards.length > 0) {
                 statusBar.setTitle('Click play when ready.');
                 hand.setSelectionMode('single', playableCards);
-                this.buttonsPlay();
+                this.enablePlay();
                 return;
             }
 
@@ -399,7 +431,7 @@ export class Game {
             } else {
                 statusBar.setTitle(_('You have to skip.'));
             }
-            this.buttonsPass();
+            this.enablePass();
             hand.setSelectionMode('single', playableCards);
             return;
         }
@@ -419,7 +451,7 @@ export class Game {
             if (playCards.length > 0) {
                 statusBar.setTitle('Click play when ready.');
                 hand.setSelectionMode('single', playableCards);
-                this.buttonsPlay();
+                this.enablePlay();
                 return;
             }
 
@@ -428,7 +460,7 @@ export class Game {
             } else {
                 statusBar.setTitle(_('You have to skip.'));
             }
-            this.buttonsPass();
+            this.enablePass();
             hand.setSelectionMode('single', playableCards);
             return;
         }
@@ -448,7 +480,7 @@ export class Game {
             if (playCards.length > 0) {
                 statusBar.setTitle('Click play when ready.');
                 hand.setSelectionMode('single', playableCards);
-                this.buttonsPlay();
+                this.enablePlay();
                 return;
             }
 
@@ -457,7 +489,7 @@ export class Game {
             } else {
                 statusBar.setTitle(_('You have to skip.'));
             }
-            this.buttonsPass();
+            this.enablePass();
             hand.setSelectionMode('single', playableCards);
             return;
         }
@@ -538,7 +570,7 @@ export class Game {
         ////////////////////// no demands
         if (playCards.length > 0) {
             statusBar.setTitle('Click play when ready.');
-            this.buttonsPlay();
+            this.enablePlay();
             return;
         }
 
@@ -546,9 +578,9 @@ export class Game {
             statusBar.setTitle(_('You have no playable cards.'));
         } else {
             statusBar.setTitle(_('Pick cards to play.'));
-            if (!st.drew) this.buttonsDraw();
+            if (!st.drew) this.enableDraw();
         }
-        this.buttonsPass();
+        this.enablePass();
     }
 
     setupNotifications() {
@@ -560,12 +592,15 @@ export class Game {
     }
 
     pickRank() {
-        this.bga.statusBar.removeActionButtons();
+        let statusBar = this.bga.statusBar;
+        let st = this.st;
 
-        if (this.st.fwPlayerId == this.playerId) {
+        statusBar.removeActionButtons();
+
+        if (st.fwPlayerId == this.playerId) {
             let cards = this.hand.cards;
 
-            this.bga.statusBar.setTitle('Select a rank.');
+            statusBar.setTitle('Select a rank.');
             this.rankButtons = [];
             let availableRanks = [];
 
@@ -578,7 +613,7 @@ export class Game {
 
             for (let i = 5; i < 11; i++) {
                 if (availableRanks[i] == undefined) continue;
-                this.rankButtons[i] = this.bga.statusBar.addActionButton(_(`${i}`), () => {
+                this.rankButtons[i] = statusBar.addActionButton(_(`${i}`), () => {
                     this.bga.actions.performAction(
                         'actPickRank', {
                         rank: i
@@ -593,17 +628,19 @@ export class Game {
                 });
             });
         } else {
-            this.bga.statusBar.setTitle(`${this.bga.players.getPlayerById(this.st.fwPlayerId).name} is selecting a rank.`);
+            statusBar.setTitle(`${this.bga.players.getPlayerById(st.fwPlayerId).name} is selecting a rank.`);
         }
     }
 
     pickSuit() {
-        this.bga.statusBar.removeActionButtons();
+        let statusBar = this.bga.statusBar;
+        let st = this.st;
+        statusBar.removeActionButtons();
 
-        if (this.st.fwPlayerId == this.playerId) {
+        if (st.fwPlayerId == this.playerId) {
             let cards = this.hand.cards;
 
-            this.bga.statusBar.setTitle('Select a suit.');
+            statusBar.setTitle('Select a suit.');
             this.suitButtons = [];
             let availableSuits = [];
 
@@ -615,21 +652,21 @@ export class Game {
             for (let i = 1; i < 5; i++) {
                 if (availableSuits[i] == undefined) continue;
                 // TODO: show emoji of the suit
-                this.suitButtons[i] = this.bga.statusBar.addActionButton(_(`${this.cardTypes["suitUnicode"][i]}`), () => {
+                this.suitButtons[i] = statusBar.addActionButton(_(`${this.cardTypes["suitUnicode"][i]}`), () => {
                     this.bga.actions.performAction(
                         'actPickSuit', {
                         suit: i
                     });
                 });
             }
-            this.suitButtons[5] = this.bga.statusBar.addActionButton(_('any'), () => {
+            this.suitButtons[5] = statusBar.addActionButton(_('any'), () => {
                 this.bga.actions.performAction(
                     'actPickSuit', {
                     suit: 20
                 });
             });
         } else
-            this.bga.statusBar.setTitle(`${this.bga.players.getPlayerById(this.st.fwPlayerId).name} is selecting a suit.`);
+            statusBar.setTitle(`${this.bga.players.getPlayerById(st.fwPlayerId).name} is selecting a suit.`);
     }
 
     stateUpdate(args) {
@@ -676,8 +713,20 @@ export class Game {
         this.setPlayOptions();
     }
 
-    async notif_StateUpdate(args) {
+    async notif_Selected(args) {
         this.stateUpdate(args);
+
+        this.setPlayOptions();
+    }
+
+    async notif_CalledMakau(args) {
+        this.stateUpdate(args);
+
+        if (args._private) {
+            this.hand.addCards(Array.from(Object.values(args._private.cards)));
+        } else {
+            this.updateHandSize(args.onPlayerId, args[`hand${args.onPlayerId}`]);
+        }
 
         this.setPlayOptions();
     }
