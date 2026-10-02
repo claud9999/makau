@@ -108,12 +108,22 @@ export class Game {
 
         let html = `
             <div id="table">
-                <div id="deckdiscardplay" style="display: inline;" width="100%">
-                    <div id="deck" class="deck">deck</div>
-                    <div id="discard" class="discard">discard</div>
-                    <div id="play" class="play">play</div>
-                </div><!-- deckdiscardplay --><br/>
-                <div id="players" style="display: inline;" width="100%">
+                <div class="deckdiscardplay">
+                    <div style="flex: column; width:20%;">
+                        <div id="deck" class="deck"></div>
+                        <div id="drawButton"></div>
+                    </div>
+                    <div style="flex: column; width:60%">
+                        <div id="discard" class="discard"></div>
+                        <div id="passButton"></div>
+                    </div>
+                    <div style="flex: column; width:20%;">
+                        <div id="play" class="play"></div>
+                        <div id="playButton"></div>
+                    </div>
+                </div><!-- deckdiscardplay -->
+
+                <div class="players">
             `;
 
         for (let i = 0; i < args.playerIds.length; i++) {
@@ -122,16 +132,17 @@ export class Game {
             if (playerId == this.playerId) continue;
 
             html += `
-                    <div id="hand${playerId}" width="15%" class="player">
-                    <div id="makau${playerId}"></div>
-                    </div><!-- hand${playerId} -->
+                    <div style="flex: column; width:30%;">
+                        <div id="hand${playerId}" class="player"></div>
+                        <div id="makau${playerId}"></div>
+                    </div>
             `;
         }
 
-        let width_remain = 100-15*args.playerIds.length;
         html += `
-                    <div id="hand" class="hand" width="${width_remain}%">
-\                        <div id="makau${this.playerId}"></div>
+                    <div style="flex: column; flex-grow: 1;">
+                        <div id="hand" class="hand"></div>
+                        <div align="right" id="makau${this.playerId}"></div>
                     </div>
                 </div><!-- players -->
             </div><!-- table -->
@@ -182,19 +193,8 @@ export class Game {
 
         for (let i = 0; i < args.playerIds.length; i++) {
             let playerId = args.playerIds[i];
-            if (playerId == this.bga.players.getCurrentPlayerId()) continue;
 
-            let hsName = `hand${playerId}`;
-
-            let hs = new BgaCards.DiscardDeck(
-                this.cardsManager,
-                document.getElementById(`hand${playerId}`),
-                {
-                    cardOverlap: 75
-                }
-            );
-            this[hsName] = hs;
-
+            /// stuff to add to all players
             this[`makauButton${playerId}`] = this.bga.statusBar.addActionButton(
                 _('Makau'),
                 () => {
@@ -206,7 +206,19 @@ export class Game {
                 }
             );
 
-            this.updateHandSize(playerId, args[hsName]);
+            if (playerId == this.bga.players.getCurrentPlayerId()) continue;
+
+            /// stuff to add to other players
+
+            let hName = `hand${playerId}`;
+            this[hName] = new BgaCards.DiscardDeck(
+                this.cardsManager,
+                document.getElementById(hName),
+                {
+                    cardOverlap: 75
+                }
+            );
+            this.updateHandSize(playerId, args[hName]);
         }
 
         this.hand = new BgaCards.HandStock(
@@ -248,6 +260,34 @@ export class Game {
             this.setPlayOptions();
         }
 
+        this.drawButton = this.bga.statusBar.addActionButton(_('Draw'), () => {
+            this.hand.addCards(this.play.getCards());
+            this.bga.actions.performAction('actDraw');
+            this.hand.setSelectionMode('none');
+        }, {
+            'destination': document.getElementById("drawButton"),
+            'disabled': true
+        });
+
+        this.playButton = this.bga.statusBar.addActionButton(_('Play'), () => {
+            this.bga.actions.performAction(
+                'actPlay', {
+                cardIds: this.play.getCards().map((card) => card.id)
+            })
+        }, {
+            'destination': document.getElementById("playButton"),
+            'disabled': true
+        });
+
+        this.passButton = this.bga.statusBar.addActionButton(_('Pass'), () => {
+            this.hand.addCards(this.play.getCards());
+            this.bga.actions.performAction('actPass');
+            this.hand.setSelectionMode('none');
+        }, {
+            'destination': document.getElementById("passButton"),
+            'disabled': true
+        });
+
         // Setup game notifications to handle (see "setupNotifications" method below)
         this.setupNotifications();
 
@@ -256,21 +296,15 @@ export class Game {
     }
 
     enablePlay() {
-        this.playButton = this.bga.statusBar.addActionButton(_('Play'), () => {
-            this.bga.actions.performAction(
-                'actPlay', {
-                cardIds: this.play.getCards().map((card) => card.id)
-            });
-            this.hand.setSelectionMode('none');
-        });
+        this.playButton.disabled = false;
+    }
+
+    disablePlay() {
+        this.playButton.disabled = true;
     }
 
     enableDraw() {
-        this.drawButton = this.bga.statusBar.addActionButton(_('Draw'), () => {
-            this.hand.addCards(this.play.getCards());
-            this.bga.actions.performAction('actDraw');
-            this.hand.setSelectionMode('none');
-        });
+        this.drawButton.disabled = false;
         this.deck.setSelectionMode('single');
         this.deck.onCardClick = () => {
             this.hand.addCards(this.play.getCards());
@@ -279,21 +313,27 @@ export class Game {
         }
     }
 
+    disableDraw() {
+        this.drawButton.disabled = true;
+        this.deck.onCardClick = null;
+    }
+
     enablePass() {
-        this.passButton = this.bga.statusBar.addActionButton(_('Pass'), () => {
-            this.hand.addCards(this.play.getCards());
-            this.bga.actions.performAction('actPass');
-            this.hand.setSelectionMode('none');
-        });
+        this.passButton.disabled = false;
+    }
+
+    disablePass() {
+        this.passButton.disabled = true;
     }
 
     updateHandSize(playerId, count) {
-        if (this[`hand${playerId}`] == undefined) return;
+        let h = this[`hand${playerId}`];
+        if (h == undefined) return;
 
-        this[`hand${playerId}`].removeAll();
+        h.removeAll();
 
         for (let j = 0; j < count; j++) {
-            this[`hand${playerId}`].addCard({
+            h.addCard({
                 id: `player${playerId}card${j}`,
                 suit: 0,
                 rank: 0
@@ -302,11 +342,11 @@ export class Game {
     }
 
     callMakau(activePlayerId, onPlayerId) {
-        if (this.st[`hand${this.st.playerIds[i]}`] <= 1)
+        if (this.st[`hand${onPlayerId}`] <= 1)
             return this.bga.actions.performAction('actMakau',
                 {
                     'currentPlayerId': this.st.playerId,
-                    'onPlayerId': this.st.playerIds[i],
+                    'onPlayerId': onPlayerId,
                 });
     }
 
@@ -317,6 +357,10 @@ export class Game {
         let handCards = this.hand.cards;
         let playCards = this.play.cards;
         let st = this.st;
+
+        this.disableDraw();
+        this.disablePlay();
+        this.disablePass();
 
         let currentPlayerId = this.bga.players.getCurrentPlayerId();
 
@@ -383,7 +427,7 @@ export class Game {
 
         if (this[`skip${st.fwPlayerId}`] > 0) {
             ////////////////////// must skip
-            statusBar.setTitle(_('You must skip your turn.'));
+            statusBar.setTitle(_('You must pass.'));
             this.enablePass();
             hand.setSelectionMode('single', []);
             return;
@@ -412,7 +456,7 @@ export class Game {
             if (playableCards.length > 0) {
                 statusBar.setTitle(_('Add to the skip.'));
             } else {
-                statusBar.setTitle(_('You have to skip.'));
+                statusBar.setTitle(_('You have to pass.'));
             }
             this.enablePass();
             hand.setSelectionMode('single', playableCards);
@@ -441,7 +485,7 @@ export class Game {
             if (playableCards.length > 0) {
                 statusBar.setTitle(_('Select cards to play.'));
             } else {
-                statusBar.setTitle(_('You have to skip.'));
+                statusBar.setTitle(_('You have to pass.'));
             }
             this.enablePass();
             hand.setSelectionMode('single', playableCards);
@@ -456,7 +500,7 @@ export class Game {
                 if (
                     card.rank > 4
                     && card.rank < 11
-                    && card.suit == this.st.suit
+                    && card.suit == st.suitDemand
                 ) playableCards.push(card);
             }
 
@@ -470,7 +514,7 @@ export class Game {
             if (playableCards.length > 0) {
                 statusBar.setTitle(_('Select cards to play.'));
             } else {
-                statusBar.setTitle(_('You have to skip.'));
+                statusBar.setTitle(_('You have to pass.'));
             }
             this.enablePass();
             hand.setSelectionMode('single', playableCards);
@@ -691,7 +735,7 @@ export class Game {
         this.stateUpdate(args);
 
         this.discard.addCards(Array.from(Object.values(args.cards)));
-        this.updateHandSize(args.playerId, args.handSize);
+        this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
 
         this.setPlayOptions();
     }

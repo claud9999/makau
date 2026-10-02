@@ -212,11 +212,11 @@ class GameOn extends GameState
             //////////////// suit demand
             $playableCards = [];
             for ($i = 0; $i < count($playedCards); $i++) {
-                $card = $playedCards[i];
+                $card = $playedCards[$i];
                 if (
-                    $card->suit == $st['suitDemand']
-                    && $card->rank > 4
+                    $card->rank > 4
                     && $card->rank < 11
+                    && $card->suit == $st['suitDemand']
                 )
                     $playableCards[] = $card;
             }
@@ -430,6 +430,9 @@ class GameOn extends GameState
     #[PossibleAction]
     public function actMakau(int $currentPlayerId, int $onPlayerId)
     {
+        $globals = $this->bga->globals;
+        $cards = $this->game->cards;
+
         $st = json_decode($this->bga->globals->get('state'), true);
 
         if ($st["makau{$onPlayerId}"] > 0) return;
@@ -444,7 +447,7 @@ class GameOn extends GameState
             $drawnCards = [];
         }
 
-        $this->bga->globals->set('state', json_encode($st));
+        $globals->set('state', json_encode($st));
 
         $st['onPlayerId'] = $onPlayerId;
         if (count($drawnCards) > 0)

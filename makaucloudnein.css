@@ -8,37 +8,34 @@
   height: 100%;
 }
 
+.deckdiscardplay {
+  width: 100%;
+  display: flex;
+}
+
 .deck {
-  display: inline-block;
   width: 20%;
-  height: calc(var(--h-card-height) * 1.2);
-  background-color: gray;
 }
 
 .discard {
-  display: inline-block;
   width: 60%;
-  height: calc(var(--h-card-height) * 1.2);
-  background-color: blue;
 }
 
 .play {
-  display: inline-block;
   width: 20%;
-  height: calc(var(--h-card-height) * 1.2);
-  background-color: green;
+}
+
+.players {
+  display: flex;
+  width: 100%;
 }
 
 .player {
-  display: inline-block;
-  height: calc(var(--h-card-height) * 1.2);
-  background-color: red;
+  width: 15%;
 }
 
 .hand {
-  display: inline-block;
-  height: calc(var(--h-card-height) * 1.2);
-  background-color: yellow;
+  width: 100%;
 }
 
 .ha-card-front {
