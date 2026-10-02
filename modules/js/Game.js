@@ -106,56 +106,40 @@ export class Game {
         this.st = args;
         this.playerId = args.playerId;
 
-        this.bga.gameArea.getElement().insertAdjacentHTML(
-            "beforeend",
-            `
-                    <div id="table" class="table" width="100%">
-                        <div id="otherstuff">
-                            <div id="deck_block" class="deck">
-                                <b id="deck_label">${_("Deck")}</b><br/>
-                                <span id="deck"></span>
-                            </div>
-                            <div id="discard_block" class="discard">
-                                <b id="discard_label">${_("Discards")}</b><br/>
-                                <span id="discard">zzzzzzz</span>
-                            </div>
-                            <div id="play_block" class="play">
-                                <span id="play">play</span>
-                            </div>
-                        </div><br/>
-                        <div id="otherplayers">
-            `
-        );
+        let html = `
+            <div id="table">
+                <div id="deckdiscardplay" style="display: inline;" width="100%">
+                    <div id="deck" class="deck">deck</div>
+                    <div id="discard" class="discard">discard</div>
+                    <div id="play" class="play">play</div>
+                </div><!-- deckdiscardplay --><br/>
+                <div id="players" style="display: inline;" width="100%">
+            `;
 
         for (let i = 0; i < args.playerIds.length; i++) {
             let playerId = args.playerIds[i];
 
-            if (playerId == this.bga.players.getCurrentPlayerId()) continue;
+            if (playerId == this.playerId) continue;
 
-            this.bga.gameArea.getElement().insertAdjacentHTML(
-                "beforeend",
-                `
-                        <div class="player_block" class="player">
-                            <b id="hand${playerId}_label">${this.bga.players.getPlayerById(playerId).name}'s hand</b><br/>
-                        <span id="hand${playerId}""></span><br/>
-                        <span id="makau${playerId}"></span>
-                        </div>
-                `
-            );
+            html += `
+                    <div id="hand${playerId}" width="15%" class="player">
+                    <div id="makau${playerId}"></div>
+                    </div><!-- hand${playerId} -->
+            `;
         }
 
-        // close the "otherplayers" and "table" tags
+        let width_remain = 100-15*args.playerIds.length;
+        html += `
+                    <div id="hand" class="hand" width="${width_remain}%">
+\                        <div id="makau${this.playerId}"></div>
+                    </div>
+                </div><!-- players -->
+            </div><!-- table -->
+            `;
+
         this.bga.gameArea.getElement().insertAdjacentHTML(
             "beforeend",
-            `
-                    </div><!-- close otherplayers -->
-                    <div id="hand_block" class="hand">
-                        <b id="hand_label">${_("My hand")}</b>
-                        <span id="hand"></span><br/>
-                        <span id="makau${this.playerId}"></span>
-                    </div>
-                </div><!-- close table -->
-            `
+            html
         );
 
         // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
@@ -202,7 +186,7 @@ export class Game {
 
             let hsName = `hand${playerId}`;
 
-            let hs = new BgaCards.HandStock(
+            let hs = new BgaCards.DiscardDeck(
                 this.cardsManager,
                 document.getElementById(`hand${playerId}`),
                 {
