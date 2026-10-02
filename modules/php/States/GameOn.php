@@ -92,7 +92,7 @@ class GameOn extends GameState
         $forcedDraw = false;
         $draw = $st['draw'] + $st["draw{$currentPlayerId}"];
         if ($st['bwPlayerId'] == $currentPlayerId) $draw += $st['bwDraw'];
-        if ($draw == 0) $draw = 10;
+        if ($draw == 0) $draw = 1;
         else $forcedDraw = true;
 
         $drawnCards = $cards->pickItems($draw, 'deck', ['hand', $currentPlayerId])->values();

@@ -357,6 +357,7 @@ export class Game {
         let handCards = this.hand.cards;
         let playCards = this.play.cards;
         let st = this.st;
+        let players = this.bga.players;
 
         this.disableDraw();
         this.disablePlay();
@@ -367,9 +368,16 @@ export class Game {
         statusBar.removeActionButtons();
 
         if (st.fwPlayerId != currentPlayerId && st.bwPlayerId != currentPlayerId) {
-            statusBar.setTitle(_("${playerName} is playing now."), {
-                "playerName": this.bga.players.getPlayerById(st.fwPlayerId).name,
-            });
+            if (st.bwPlayerId > 0) {
+                statusBar.setTitle(_("${playerName} and ${bwPlayerName} are playing now."), {
+                    "playerName": players.getPlayerById(st.fwPlayerId).name,
+                    "bwPlayerName": players.getPlayerById(st.bwPlayerId).name
+                });
+            } else {
+                statusBar.setTitle(_("${playerName} is playing now."), {
+                    "playerName": players.getPlayerById(st.fwPlayerId).name,
+                });
+            }
 
             hand.setSelectionMode('single', []);
             return;
