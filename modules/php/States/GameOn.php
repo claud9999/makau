@@ -298,7 +298,7 @@ class GameOn extends GameState
                 } else {
                     return $game->err(
                         $currentPlayerId,
-                        'You cannot play ' . $this->getCardName($card) . ' top=' . $this->getCardName($top)
+                        'You cannot play ' . $this->getCardName($card) . ' on top of ' . $this->getCardName($top)
                     );
                 }
             }
@@ -365,8 +365,6 @@ class GameOn extends GameState
             $cards->moveItem($playedCards[$i], 'discard');
         }
 
-        $st["hand{$currentPlayerId}"] = $cards->countItemsInLocation(['hand', $currentPlayerId]);
-
         if ($st['suitDemand']) {
             $st['suitDemand'] = 0;
         }
@@ -383,8 +381,10 @@ class GameOn extends GameState
 
         $this->bga->globals->set('state', json_encode($st));
 
+        $st["hand{$currentPlayerId}"] = $cards->countItemsInLocation(['hand', $currentPlayerId]);
         $st['playerId'] = $currentPlayerId;
         $st['cards'] = $playedCards;
+        $st['discard'] = $cards->getItemsInLocation('discard')->values();
 
         $game->notify->all('PlayCards', '', $st);
     }

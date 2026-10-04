@@ -247,7 +247,7 @@ export class Game {
             }
         );
 
-        this.discard.addCards(args.discards);
+        this.discard.addCards(args.discard);
 
         this.hand.onCardClick = (card) => {
             if (args.gamestate.name != "GameOn") this.hand.unselectAll();
@@ -609,12 +609,10 @@ export class Game {
             return;
         }
 
-        if (playableCards.length < 1) {
-            statusBar.setTitle(_('You have no playable cards.'));
-        } else {
-            statusBar.setTitle(_('Pick cards to play.'));
-            if (!st.drew) this.enableDraw();
-        }
+        if (playableCards.length < 1) statusBar.setTitle(_('You have no playable cards.'));
+        else statusBar.setTitle(_('Pick cards to play.'));
+
+        if (!st.drew) this.enableDraw();
         this.enablePass();
     }
 

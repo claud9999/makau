@@ -56,11 +56,15 @@ class Game extends \Bga\GameFramework\Table
     protected function getAllDatas(int $currentPlayerId): array
     {
         $st = [];
+
         if ($this->bga->globals->has('state'))
             $st = json_decode($this->bga->globals->get('state'), true);
         else $st = $this->reset();
+
         $st['playerId'] = $currentPlayerId;
         $st['hand'] = $this->cards->getItemsInLocation(['hand', $currentPlayerId])->values();
+        $st['discard'] = $this->cards->getItemsInLocation('discard')->values();
+
         return $st;
     }
 
@@ -79,7 +83,6 @@ class Game extends \Bga\GameFramework\Table
             'fwPlayerId' => $currentPlayerId,
             'bwPlayerId' => 0,
             'draw' => 0,
-            'bwDraw' => 0,
             'skip' => 0,
             'rankPick' => 0,
             'suitPick' => 0,
@@ -88,15 +91,12 @@ class Game extends \Bga\GameFramework\Table
             'lastJack' => 0,
             'battleKing' => 0,
             'drew' => 0,
-            'deck' => $cards->countItemsInLocation('deck'),
-            'discards' => $cards->getItemsInLocation('discard')->values(),
         ];
 
         for ($i = 0; $i < count($playerIds); $i++) {
             $playerId = $playerIds[$i];
             $st["skip{$playerId}"] = 0;
             $st["draw{$playerId}"] = 0;
-            $st["hand{$playerId}"] = $cards->countItemsInLocation(['hand', $playerId]);
             $st["makau{$playerId}"] = 0;
         }
 
