@@ -91,7 +91,6 @@ class GameOn extends GameState
         if ($st['drew'] > 0) return $game->err($currentPlayerId, 'can only draw once');
         $forcedDraw = false;
         $draw = $st['draw'] + $st["draw{$currentPlayerId}"];
-        if ($st['bwPlayerId'] == $currentPlayerId) $draw += $st['bwDraw'];
         if ($draw == 0) $draw = 1;
         else $forcedDraw = true;
 
@@ -106,7 +105,6 @@ class GameOn extends GameState
             $st["draw{$currentPlayerId}"] = 0;
             if ($st['bwPlayerId'] == $currentPlayerId) {
                 $st['bwPlayerId'] = 0;
-                $st['bwDraw'] = 0;
             }
             $st['battleKing'] = 0;
             $st['drew'] = 0;
@@ -174,24 +172,22 @@ class GameOn extends GameState
             for ($i = 0; $i < count($playableCards); $i++) {
                 switch ($playableCards[$i]->rank) {
                     case 2:
-                        $this->addToDraw($currentPlayerId, $st, 2);
+                        $st['draw'] += 2;
                         break;
                     case 3:
-                        $this->addToDraw($currentPlayerId, $st, 3);
+                        $st['draw'] += 3;
                         break;
                     case 13:
                         switch ($playableCards[$i]->suit) {
                             case 1: // KS
                             case 2: // KD
-                                $this->addToDraw($currentPlayerId, $st, 5);
+                                $st['draw'] += 5;
                                 break;
                             case 3: // KH
                             case 4: // KC
                                 if ($st['fwPlayerId'] == $currentPlayerId) $st['draw'] = 0;
-                                if ($st['bwPlayerId'] == $currentPlayerId) {
-                                    $st['bwDraw'] = 0;
+                                if ($st['bwPlayerId'] == $currentPlayerId)
                                     $st['bwPlayerId'] = 0;
-                                }
                                 break;
                         }
                         break;
@@ -332,7 +328,7 @@ class GameOn extends GameState
                             // new backward draw
                             $st['bwPlayerId'] = $this->prevPlayerId($currentPlayerId);
                             $st['battleKing'] = $currentPlayerId;
-                            $st['bwDraw'] = 5;
+                            $st['draw'] = 5;
                             break;
                         case 2: // KH draw 5
                             $st['battleKing'] = $currentPlayerId;
@@ -344,10 +340,8 @@ class GameOn extends GameState
                             if ($st['battleKing'] > 0) {
                                 if ($st['fwPlayerId'] == $currentPlayerId)
                                     $st['draw'] = 0;
-                                if ($st['bwPlayerId'] == $currentPlayerId) {
-                                    $st['bwDraw'] = 0;
+                                if ($st['bwPlayerId'] == $currentPlayerId)
                                     $st['bwPlayerId'] = 0;
-                                }
                             }
                             break;
                     }
@@ -493,14 +487,6 @@ class GameOn extends GameState
         }
 
         return $matchingCards;
-    }
-
-    function addToDraw($i, $st, $currentPlayerId)
-    {
-        if ($st['fwPlayerId'] == $currentPlayerId)
-            $st['draw'] += $i;
-        if ($st['bwPlayerId'] == $currentPlayerId)
-            $st['bwDraw'] += $i;
     }
 
     function getCardName($card): string
