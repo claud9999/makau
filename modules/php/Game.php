@@ -64,6 +64,7 @@ class Game extends \Bga\GameFramework\Table
         $st['playerId'] = $currentPlayerId;
         $st['hand'] = $this->cards->getItemsInLocation(['hand', $currentPlayerId])->values();
         $st['discard'] = $this->cards->getItemsInLocation('discard')->values();
+        $st['deck'] = $this->cards->countItemsInLocation('deck');
 
         return $st;
     }
@@ -80,8 +81,7 @@ class Game extends \Bga\GameFramework\Table
 
         $st = [
             'playerIds' => $playerIds,
-            'fwPlayerId' => $currentPlayerId,
-            'bwPlayerId' => 0,
+            'currentPlayerId' => $currentPlayerId,
             'draw' => 0,
             'skip' => 0,
             'rankPick' => 0,
@@ -91,13 +91,14 @@ class Game extends \Bga\GameFramework\Table
             'lastJack' => 0,
             'battleKing' => 0,
             'drew' => 0,
+            'reverse' => 0,
         ];
 
         for ($i = 0; $i < count($playerIds); $i++) {
             $playerId = $playerIds[$i];
             $st["skip{$playerId}"] = 0;
-            $st["draw{$playerId}"] = 0;
             $st["makau{$playerId}"] = 0;
+            $st["hand{$playerId}"] = $this->cards->countItemsInLocation(['hand', $playerId]);
         }
 
         $globals->set('state', json_encode($st));

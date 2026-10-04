@@ -185,10 +185,6 @@ export class Game {
 
         this.deck = new BgaCards.Deck(this.cardsManager, document.getElementById('deck'), {
             cardNumber: args.deck,
-            counter: {
-                position: 'center',
-                extraClasses: 'text-shadow'
-            },
         });
 
         for (let i = 0; i < args.playerIds.length; i++) {
@@ -223,7 +219,10 @@ export class Game {
 
         this.hand = new BgaCards.HandStock(
             this.cardsManager,
-            document.getElementById("hand")
+            document.getElementById("hand"),
+            {
+                cardOverlap: 75,
+            }
         );
         this.hand.addCards(args.hand);
 
@@ -232,7 +231,7 @@ export class Game {
             document.getElementById("play"),
             {
                 fanShaped: false,
-                cardOverlap: 75
+                cardOverlap: 90,
             }
         );
 
@@ -243,7 +242,7 @@ export class Game {
             document.getElementById("discard"),
             {
                 fanShaped: false,
-                cardOverlap: 75
+                cardOverlap: 90
             }
         );
 
@@ -367,73 +366,20 @@ export class Game {
 
         statusBar.removeActionButtons();
 
-        if (st.fwPlayerId != currentPlayerId && st.bwPlayerId != currentPlayerId) {
-            if (st.bwPlayerId > 0) {
-                statusBar.setTitle(_("${playerName} and ${bwPlayerName} are playing now."), {
-                    "playerName": players.getPlayerById(st.fwPlayerId).name,
-                    "bwPlayerName": players.getPlayerById(st.bwPlayerId).name
-                });
-            } else {
-                statusBar.setTitle(_("${playerName} is playing now."), {
-                    "playerName": players.getPlayerById(st.fwPlayerId).name,
-                });
-            }
+        let playableCards = [];
+
+        if (st.currentPlayerId != currentPlayerId) {
+            statusBar.setTitle(_("${playerName} is playing now."), {
+                "playerName": players.getPlayerById(st.currentPlayerId).name,
+            });
 
             hand.setSelectionMode('single', []);
             return;
         }
 
-        if (st[`draw${st.fwPlayerId}`] > 0) {
-            ////////////////////// must draw
-            setTitle(_('You must draw cards.'));
-            this.enableDraw();
-            hand.setSelectionMode('single', []);
-            return;
-        }
-
-        if (st.draw > 0) {
-            ////////////////////// draw demand
-            let playableCards = [];
-
-            for (let i = 0; i < handCards.length; i++) {
-                let card = handCards[i];
-                if (card.rank < 4 || card.rank == 13) playableCards.push(card);
-            }
-
-            if (playCards.length > 0) {
-                statusBar.setTitle('Click play when ready.');
-                hand.setSelectionMode('single', playableCards);
-                this.enablePlay();
-                return;
-            }
-
-            if (playableCards.length > 0) {
-                statusBar.setTitle('You may add to the draw.')
-                hand.setSelectionMode('single', playableCards);
-            } else {
-                statusBar.setTitle('You must draw.');
-            }
-            this.enableDraw();
-            return;
-        }
-
-        if (st.fwPlayerId != currentPlayerId) {
-            // bwPlayerId, should never get here!
-            hand.setSelectionMode('single', []);
-            return;
-        }
-
-        if (st.rankPick > 0) {
-            ////////////////////// pick rank
-            return this.pickRank();
-        }
-
-        if (st.suitPick > 0) {
-            ////////////////////// pick suit
-            return this.pickSuit();
-        }
-
-        if (this[`skip${st.fwPlayerId}`] > 0) {
+        // handle skips first, 'cause if there's also other demands,
+        // they don't apply to the skipped player
+        if (st[`skip${st.currentPlayerId}`] > 0) {
             ////////////////////// must skip
             statusBar.setTitle(_('You must pass.'));
             this.enablePass();
@@ -443,7 +389,6 @@ export class Game {
 
         if (st.skip > 0) {
             ////////////////////// skip demand
-            let playableCards = [];
             for (let i = 0; i < handCards.length; i++) {
                 let card = handCards[i];
                 if (card.rank == 4) playableCards.push(card);
@@ -471,16 +416,12 @@ export class Game {
             return;
         }
 
-        if (st.rankDemand > 0) {
-            ////////////////////// rank demand
-            let playableCards = [];
+        if (st.draw > 0) {
+            ////////////////////// draw demand
+
             for (let i = 0; i < handCards.length; i++) {
                 let card = handCards[i];
-                if (
-                    card.rank == st.rankDemand
-                    || st.rankDemand == 20 && card.rank > 4 && card.rank < 11
-                    || card.rank == 11
-                ) playableCards.push(card);
+                if (card.rank < 4 || card.rank == 13 && (st.battleKing > 0 || card.suit < 3)) playableCards.push(card);
             }
 
             if (playCards.length > 0) {
@@ -488,6 +429,44 @@ export class Game {
                 hand.setSelectionMode('single', playableCards);
                 this.enablePlay();
                 return;
+            }
+
+            if (playableCards.length > 0) {
+                statusBar.setTitle('You may add to the draw.')
+                hand.setSelectionMode('single', playableCards);
+            } else {
+                statusBar.setTitle('You must draw.');
+            }
+            this.enableDraw();
+            return;
+        }
+
+        if (st.rankPick > 0) {
+            ////////////////////// pick rank
+            return this.pickRank();
+        }
+
+        if (st.suitPick > 0) {
+            ////////////////////// pick suit
+            return this.pickSuit();
+        }
+
+        if (st.rankDemand > 0) {
+            ////////////////////// rank demand
+            if (playCards.length > 0) {
+                statusBar.setTitle('Click play when ready.');
+                hand.setSelectionMode('single', playableCards);
+                this.enablePlay();
+                return;
+            }
+
+            for (let i = 0; i < handCards.length; i++) {
+                let card = handCards[i];
+                if (
+                    card.rank == st.rankDemand
+                    || st.rankDemand == 20 && card.rank > 4 && card.rank < 11
+                    || card.rank == 11
+                ) playableCards.push(card);
             }
 
             if (playableCards.length > 0) {
@@ -502,7 +481,6 @@ export class Game {
 
         if (st.suitDemand > 0) {
             ////////////////////// suit demand
-            let playableCards = [];
             for (let i = 0; i < handCards.length; i++) {
                 let card = handCards[i];
                 if (
@@ -528,6 +506,8 @@ export class Game {
             hand.setSelectionMode('single', playableCards);
             return;
         }
+
+        ////////////////////// no demands
 
         let demand = '';
         let newdemand = '';
@@ -561,7 +541,6 @@ export class Game {
             demand = newdemand;
         }
 
-        let playableCards = [];
         let topCards = playCards;
         if (topCards.length == 0) topCards = this.discard.cards;
         let top = topCards[topCards.length - 1];
@@ -590,7 +569,7 @@ export class Game {
             }
 
             if (
-                demand == 'draw' && (card.rank < 4 || card.rank == 13 && card.suit < 3) // playing multiple draws
+                demand == 'draw' && (card.rank < 4 || card.rank == 13 && st.battleKing > 0) // playing multiple draws
                 || demand == 'skip' && card.rank == 4 // playing multiple skips
                 || card.rank == 14 // ace
                 || card.rank == 12 // queen
@@ -602,7 +581,6 @@ export class Game {
 
         hand.setSelectionMode('single', playableCards);
 
-        ////////////////////// no demands
         if (playCards.length > 0) {
             statusBar.setTitle('Click play when ready.');
             this.enablePlay();
@@ -630,7 +608,7 @@ export class Game {
 
         statusBar.removeActionButtons();
 
-        if (st.fwPlayerId == this.playerId) {
+        if (st.currentPlayerId == this.playerId) {
             let cards = this.hand.cards;
 
             statusBar.setTitle('Select a rank.');
@@ -661,7 +639,7 @@ export class Game {
                 });
             });
         } else {
-            statusBar.setTitle(`${this.bga.players.getPlayerById(st.fwPlayerId).name} is selecting a rank.`);
+            statusBar.setTitle(`${this.bga.players.getPlayerById(st.currentPlayerId).name} is selecting a rank.`);
         }
     }
 
@@ -670,7 +648,7 @@ export class Game {
         let st = this.st;
         statusBar.removeActionButtons();
 
-        if (st.fwPlayerId == this.playerId) {
+        if (st.currentPlayerId == this.playerId) {
             let cards = this.hand.cards;
 
             statusBar.setTitle('Select a suit.');
@@ -699,7 +677,7 @@ export class Game {
                 });
             });
         } else
-            statusBar.setTitle(`${this.bga.players.getPlayerById(st.fwPlayerId).name} is selecting a suit.`);
+            statusBar.setTitle(`${this.bga.players.getPlayerById(st.currentPlayerId).name} is selecting a suit.`);
     }
 
     stateUpdate(args) {
@@ -709,16 +687,16 @@ export class Game {
     }
 
     async notif_Pass(args) {
+        let st = this.st;
         this.stateUpdate(args);
 
-        this.st.suitDemand = 0;
+        st.suitDemand = 0;
 
-        this.st[`skip${this.st.fwPlayerId}`] = args.skip;
+        //carry skips forward
+        st[`skip${this.st.currentPlayerId}`] = args.skip;
 
-        if (args.draw > 0) this.st[`draw${this.st.fwPlayerId}`] = args.draw;
-
-        this.st.skip = 0;
-        this.st.draw = 0;
+        st.skip = 0;
+        st.draw = 0;
 
         this.setPlayOptions();
     }
@@ -727,6 +705,12 @@ export class Game {
         this.stateUpdate(args);
 
         this.deck.setCardNumber(args.deck);
+
+        if (args.reshuffled) {
+            // could be a reshuffle
+            await this.discard.removeAll();
+            await this.hand.addCards(Array.from(Object.values(args.discards)));
+        }
 
         if (args._private) {
             await this.hand.addCards(Array.from(Object.values(args._private.cards)));
