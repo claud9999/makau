@@ -41,6 +41,16 @@ class GameOn extends GameState
         if ($currentPlayerId != $st['currentPlayerId'])
             return $game->err($currentPlayerId, 'not your turn');
 
+        if (
+            $st['draw'] == 0
+            && $st['skip'] == 0
+            && $st["skip{$currentPlayerId}"] == 0
+            && $st['suitDemand'] == 0
+            && $st['rankDemand'] == 0
+            && $st['drew'] == 0
+        )
+            return $game->err($currentPlayerId, 'have to draw before passing');
+
         $skip = $st["skip{$currentPlayerId}"] + $st['skip'];
         if ($skip > 0) {
             // I have more skips to skip
@@ -311,12 +321,11 @@ class GameOn extends GameState
                 case 13:
                     switch ($card->suit) {
                         case 1: // KS back draw 5
-                            // new backward draw
                             $st['currentPlayerId'] = $this->prevPlayerId($currentPlayerId);
                             $st['reverse'] = 1;
                         case 2: // KH draw 5
                             $st['battleKing'] = 5;
-                            $st['draw'] = 5;
+                            $st['draw'] += 5;
                             break;
                         case 3:
                         case 4:
@@ -350,8 +359,6 @@ class GameOn extends GameState
 
         $st['drew'] = 0;
 
-        $this->bga->globals->set('state', json_encode($st));
-
         $handCards = $cards->countItemsInLocation(['hand', $currentPlayerId]);
         if ($handCards == 0) {
             $playerScore = $this->bga->playerScore;
@@ -360,8 +367,15 @@ class GameOn extends GameState
                 // WINNER!
                 return GameOver::class;
             }
-            $game->nextHand($st);
-        }
+            $st = $game->reset();
+            $this->st = $st;
+            $st['reshuffled'] = 1;
+            $st['_private'] = [
+                $currentPlayerId => [
+                    'hand' => $cards->getItemsInLocation(['hand', $currentPlayerId])
+                ]
+            ];
+        } else $this->bga->globals->set('state', json_encode($st));
 
         $st["hand{$currentPlayerId}"] = $handCards;
         $st['playerId'] = $currentPlayerId;
@@ -369,7 +383,6 @@ class GameOn extends GameState
         $st['discard'] = $cards->getItemsInLocation('discard')->values();
 
         $game->notify->all('PlayCards', '', $st);
-
     }
 
     #[PossibleAction]

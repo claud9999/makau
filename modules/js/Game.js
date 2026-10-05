@@ -206,15 +206,15 @@ export class Game {
 
             /// stuff to add to other players
 
-            let hName = `hand${playerId}`;
-            this[hName] = new BgaCards.DiscardDeck(
+            let handName = `hand${playerId}`;
+            this[handName] = new BgaCards.DiscardDeck(
                 this.cardsManager,
-                document.getElementById(hName),
+                document.getElementById(handName),
                 {
                     cardOverlap: 75
                 }
             );
-            this.updateHandSize(playerId, args[hName]);
+            this.updateHandSize(playerId, args[handName]);
         }
 
         this.hand = new BgaCards.HandStock(
@@ -326,13 +326,19 @@ export class Game {
     }
 
     updateHandSize(playerId, count) {
-        let h = this[`hand${playerId}`];
-        if (h == undefined) return;
+        let hand = this[`hand${playerId}`];
+        if (hand == undefined) return;
+        if (hand.cards.length == count) return;
 
-        h.removeAll();
+        let toAdd = count - hand.cards.length;
 
-        for (let j = 0; j < count; j++) {
-            h.addCard({
+        if (toAdd < 0) {
+            toAdd = count;
+            hand.removeAll();
+        }
+
+        for (let j = 0; j < toAdd; j++) {
+            hand.addCard({
                 id: `player${playerId}card${j}`,
                 suit: 0,
                 rank: 0
@@ -590,8 +596,8 @@ export class Game {
         if (playableCards.length < 1) statusBar.setTitle(_('You have no playable cards.'));
         else statusBar.setTitle(_('Pick cards to play.'));
 
-        if (!st.drew) this.enableDraw();
-        this.enablePass();
+        if (!st.drew && demand == '') this.enableDraw();
+        else this.enablePass();
     }
 
     setupNotifications() {
@@ -707,25 +713,46 @@ export class Game {
         this.deck.setCardNumber(args.deck);
 
         if (args.reshuffled) {
-            // could be a reshuffle
-            await this.discard.removeAll();
-            await this.hand.addCards(Array.from(Object.values(args.discards)));
+            this.redoDiscards(args);
         }
 
         if (args._private) {
             await this.hand.addCards(Array.from(Object.values(args._private.cards)));
             this.st.drew = 1;
-        } else
+        } else {
             this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
+        }
 
         this.setPlayOptions();
     }
 
     async notif_PlayCards(args) {
-        this.stateUpdate(args);
+        let st = this.st;
 
-        this.discard.addCards(Array.from(Object.values(args.cards)));
-        this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
+        if (args.reshuffled > 0) {
+            this.deck.setCardNumber(args.deck);
+
+            await this.discard.removeAll();
+            await this.discard.addCards(Array.from(Object.values(args.discard)));
+
+            for (let i = 0; i < st.playerIds.length; i++) {
+                let playerId = st.playerIds[i];
+                this.updateHandSize(playerId, args[`hand${playerId}`]);
+            }
+
+            this.play.removeAll();
+
+            this.hand.removeAll();
+            this.hand.addCards(args._private.hand);
+
+            this.stateUpdate(args);
+        } else {
+            this.stateUpdate(args);
+
+            this.discard.addCards(Array.from(Object.values(args.cards)));
+
+            this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
+        }
 
         this.setPlayOptions();
     }

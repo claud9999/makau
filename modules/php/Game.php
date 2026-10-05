@@ -66,6 +66,10 @@ class Game extends \Bga\GameFramework\Table
         $st['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId])->values();
         $st['discard'] = $cards->getItemsInLocation('discard')->values();
         $st['deck'] = $cards->countItemsInLocation('deck');
+        for ($i = 0; $i < count($st['playerIds']); $i++) {
+            $playerId = $st['playerIds'][$i];
+            $st["hand{$playerId}"] = $cards->countItemsInLocation(['hand', $playerId]);
+        }
 
         return $st;
     }
@@ -105,26 +109,6 @@ class Game extends \Bga\GameFramework\Table
         $globals->set('state', json_encode($st));
 
         return $st;
-    }
-
-    public function nextHand($st)
-    {
-        $st['draw'] = 0;
-        $st['skip'] = 0;
-        $st['rankPick'] = 0;
-        $st['suitPick'] = 0;
-        $st['rankDemand'] = 0;
-        $st['suitDemand'] = 0;
-        $st['lastJack'] = 0;
-        $st['battleKing'] = 0;
-        $st['drew'] = 0;
-        $st['reverse'] = 0;
-
-        for ($i = 0; $i < count($st['playerIds']); $i++) {
-            $playerId = $st['playerIds'][$i];
-            $st["skip{$playerId}"] = 0;
-            $st["makau{$playerId}"] = 0;
-        }
     }
 
     protected function setupNewGame($players, $options = [])
