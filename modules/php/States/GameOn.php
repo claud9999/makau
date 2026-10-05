@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bga\Games\makaucloudnein\States;
 
 use Bga\Games\makaucloudnein\Game;
+use Bga\Games\makaucloudnein\States\GameOn;
 use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\PossibleAction;
 use Bga\GameFramework\States\GameState;
@@ -109,7 +110,6 @@ class GameOn extends GameState
 
         $st['drew'] = $draw;
         $st['deck'] = $cards->countItemsInLocation('deck');
-        $st["hand{$currentPlayerId}"] = $cards->countItemsInLocation(['hand', $currentPlayerId]);
 
         if ($forcedDraw) {
             $st['draw'] = 0;
@@ -124,6 +124,7 @@ class GameOn extends GameState
 
         $st['playerId'] = $currentPlayerId;
         $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
+        $st["hand{$currentPlayerId}"] = $cards->countItemsInLocation(['hand', $currentPlayerId]);
         $st['_private'] = [
             $currentPlayerId => [
                 'cards' => $drawnCards
@@ -351,12 +352,24 @@ class GameOn extends GameState
 
         $this->bga->globals->set('state', json_encode($st));
 
-        $st["hand{$currentPlayerId}"] = $cards->countItemsInLocation(['hand', $currentPlayerId]);
+        $handCards = $cards->countItemsInLocation(['hand', $currentPlayerId]);
+        if ($handCards == 0) {
+            $playerScore = $this->bga->playerScore;
+            $playerScore->inc($currentPlayerId, 1);
+            if ($playerScore->get($currentPlayerId) > 9) {
+                // WINNER!
+                return GameOver::class;
+            }
+            $game->nextHand($st);
+        }
+
+        $st["hand{$currentPlayerId}"] = $handCards;
         $st['playerId'] = $currentPlayerId;
         $st['cards'] = $playedCards;
         $st['discard'] = $cards->getItemsInLocation('discard')->values();
 
         $game->notify->all('PlayCards', '', $st);
+
     }
 
     #[PossibleAction]
@@ -418,13 +431,13 @@ class GameOn extends GameState
         if ($currentPlayerId != $onPlayerId) {
             $drawnCards = $cards->pickItems(5, 'deck', ['hand', $onPlayerId])->values();
             $st['deck'] = $cards->countItemsInLocation('deck');
-            $st["hand{$onPlayerId}"] = $cards->countItemsInLocation(['hand', $onPlayerId]);
         } else {
             $drawnCards = [];
         }
 
         $globals->set('state', json_encode($st));
 
+        $st["hand{$onPlayerId}"] = $cards->countItemsInLocation(['hand', $onPlayerId]);
         $st['onPlayerId'] = $onPlayerId;
         if (count($drawnCards) > 0)
             $st['_private'] = [

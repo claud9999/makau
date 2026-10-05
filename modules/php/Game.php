@@ -55,16 +55,17 @@ class Game extends \Bga\GameFramework\Table
 
     protected function getAllDatas(int $currentPlayerId): array
     {
-        $st = [];
+        $globals = $this->bga->globals;
+        $cards = $this->cards;
 
-        if ($this->bga->globals->has('state'))
-            $st = json_decode($this->bga->globals->get('state'), true);
+        if ($globals->has('state'))
+            $st = json_decode($globals->get('state'), true);
         else $st = $this->reset();
 
         $st['playerId'] = $currentPlayerId;
-        $st['hand'] = $this->cards->getItemsInLocation(['hand', $currentPlayerId])->values();
-        $st['discard'] = $this->cards->getItemsInLocation('discard')->values();
-        $st['deck'] = $this->cards->countItemsInLocation('deck');
+        $st['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId])->values();
+        $st['discard'] = $cards->getItemsInLocation('discard')->values();
+        $st['deck'] = $cards->countItemsInLocation('deck');
 
         return $st;
     }
@@ -82,28 +83,48 @@ class Game extends \Bga\GameFramework\Table
         $st = [
             'playerIds' => $playerIds,
             'currentPlayerId' => $currentPlayerId,
-            'draw' => 0,
-            'skip' => 0,
-            'rankPick' => 0,
-            'suitPick' => 0,
-            'rankDemand' => 0,
-            'suitDemand' => 0,
-            'lastJack' => 0,
-            'battleKing' => 0,
-            'drew' => 0,
-            'reverse' => 0,
         ];
 
-        for ($i = 0; $i < count($playerIds); $i++) {
-            $playerId = $playerIds[$i];
+        $st['draw'] = 0;
+        $st['skip'] = 0;
+        $st['rankPick'] = 0;
+        $st['suitPick'] = 0;
+        $st['rankDemand'] = 0;
+        $st['suitDemand'] = 0;
+        $st['lastJack'] = 0;
+        $st['battleKing'] = 0;
+        $st['drew'] = 0;
+        $st['reverse'] = 0;
+
+        for ($i = 0; $i < count($st['playerIds']); $i++) {
+            $playerId = $st['playerIds'][$i];
             $st["skip{$playerId}"] = 0;
             $st["makau{$playerId}"] = 0;
-            $st["hand{$playerId}"] = $this->cards->countItemsInLocation(['hand', $playerId]);
         }
 
         $globals->set('state', json_encode($st));
 
         return $st;
+    }
+
+    public function nextHand($st)
+    {
+        $st['draw'] = 0;
+        $st['skip'] = 0;
+        $st['rankPick'] = 0;
+        $st['suitPick'] = 0;
+        $st['rankDemand'] = 0;
+        $st['suitDemand'] = 0;
+        $st['lastJack'] = 0;
+        $st['battleKing'] = 0;
+        $st['drew'] = 0;
+        $st['reverse'] = 0;
+
+        for ($i = 0; $i < count($st['playerIds']); $i++) {
+            $playerId = $st['playerIds'][$i];
+            $st["skip{$playerId}"] = 0;
+            $st["makau{$playerId}"] = 0;
+        }
     }
 
     protected function setupNewGame($players, $options = [])
@@ -137,6 +158,20 @@ class Game extends \Bga\GameFramework\Table
         $this->reset();
 
         return GameOn::class;
+    }
+
+    public function getGameProgression()
+    {
+        $highest = 0;
+        $st = $this->st;
+        for ($i = 0; $i < count($st['playerIds']); $i++) {
+            $playerId = $st['playerIds'][$i];
+            $playerScore = $this->bga->playerScore;
+            if ($playerScore->get() > $highest)
+                $highest = $playerScore->get($playerId) > $highest;
+        }
+
+        return $highest * 10;
     }
 
     public function err($currentPlayerId, $message)
