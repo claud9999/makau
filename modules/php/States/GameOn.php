@@ -81,6 +81,7 @@ class GameOn extends GameState
 
         $st['playerId'] = $currentPlayerId;
         $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
+        $this->game->giveExtraTime($currentPlayerId);
 
         $game->notify->all(
             'Pass',
@@ -118,7 +119,7 @@ class GameOn extends GameState
                     $cards->updateItem($card, ['rank', 'suit']);
                 }
             }
-            
+
             $discard = $cards->pickItem('deck', 'discard');
             while ($discard->rank < 5 || $discard->rank > 10)
                 $discard = $cards->pickItem('deck', 'discard');
@@ -136,6 +137,7 @@ class GameOn extends GameState
             $st['drew'] = 0;
 
             $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
+            $this->game->giveExtraTime($st['currentPlayerId']);
         }
 
         $this->bga->globals->set('state', json_encode($st));
@@ -315,6 +317,8 @@ class GameOn extends GameState
             $st['currentPlayerId'] = $this->prevPlayerId($currentPlayerId);
         else
             $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
+
+        $this->game->giveExtraTime($st['currentPlayerId']);
 
         for ($i = 0; $i < count($playedCards); $i++) {
             $card = $playedCards[$i];
