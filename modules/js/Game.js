@@ -309,14 +309,25 @@ export class Game {
     jokerRank(card) {
         // Handle joker rank logic
         let statusBar = this.bga.statusBar;
+        let st = this.st;
+        let allowed = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 
         statusBar.removeActionButtons();
 
+        if (st.skip > 0)
+            allowed = [4];
+        else if (st.draw > 0)
+            allowed = [2, 3, 13];
+        else if (st.rankDemand > 0)
+            allowed = [st.rankDemand, 11];
+        else if (st.suitDemand > 0)
+            allowed = [5, 6, 7, 8, 9, 10];
+
         statusBar.setTitle('Select a rank.');
         this.rankButtons = [];
-        for (let i = 2; i < 15; i++) {
-            this.rankButtons[i] = statusBar.addActionButton(_(`${this.cardTypes.rank[i]}`), () => {
-                this.jokerSuit(card, i);
+        for (let i = 0; i < allowed.length; i++) {
+            this.rankButtons[i] = statusBar.addActionButton(_(`${this.cardTypes.rank[allowed[i]]}`), () => {
+                this.jokerSuit(card, allowed[i]);
             });
         }
     }
@@ -324,14 +335,18 @@ export class Game {
     jokerSuit(card, rank) {
         // Handle joker suit selection logic
         let statusBar = this.bga.statusBar;
+        let allowed = [1, 2, 3, 4];
+        let st = this.st;
 
         statusBar.removeActionButtons();
 
+        if (st.suitDemand > 0) allowed = [st.suitDemand];
+
         statusBar.setTitle('Select a suit.');
         this.suitButtons = [];
-        for (let i = 1; i < 5; i++) {
-            this.suitButtons[i] = statusBar.addActionButton(_(`${this.cardTypes["suitUnicode"][i]}`), () => {
-                this.jokerSet(card, rank, i);
+        for (let i = 0; i < allowed.length; i++) {
+            this.suitButtons[i] = statusBar.addActionButton(_(`${this.cardTypes.suitUnicode[allowed[i]]}`), () => {
+                this.jokerSet(card, rank, allowed[i]);
             });
         }
     }
@@ -807,16 +822,16 @@ export class Game {
                 this.updateHandSize(playerId, args[`hand${playerId}`]);
             }
 
-            this.play.removeAll();
+            await this.play.removeAll();
 
-            this.hand.removeAll();
-            this.hand.addCards(args._private.hand);
+            await this.hand.removeAll();
+            await this.hand.addCards(args._private.hand);
 
             this.stateUpdate(args);
         } else {
             this.stateUpdate(args);
 
-            this.discard.addCards(Array.from(Object.values(args.cards)));
+            await this.discard.addCards(Array.from(Object.values(args.cards)));
 
             this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
         }
