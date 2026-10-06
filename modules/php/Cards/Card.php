@@ -27,6 +27,9 @@ class Card
     #[ItemField]
     public int $rank;
 
+    #[ItemField]
+    public int $joker;
+
     // This property has no #[ItemField], so it is not stored in the database.
     public string $displayName;
 }

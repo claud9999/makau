@@ -69,18 +69,21 @@ class CardManager
                     'location' => 'deck',
                     'suit' => $suit,
                     'rank' => $rank,
+                    'joker' => 0
                 ];
             }
         }
         $cards[] = [
             'location' => 'deck',
             'suit' => 0,
-            'rank' => 15
+            'rank' => 15,
+            'joker' => 1
         ];
         $cards[] = [
             'location' => 'deck',
             'suit' => 0,
-            'rank' => 15
+            'rank' => 15,
+            'joker' => 1
         ];
         $this->cards->createItems($cards);
     }

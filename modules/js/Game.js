@@ -54,6 +54,8 @@ export class Game {
                 15: "Joker"
             },
         }
+
+        this.jokers = {};
     }
 
     tooltip(card) {
@@ -250,11 +252,20 @@ export class Game {
 
         this.hand.onCardClick = (card) => {
             if (args.gamestate.name != "GameOn") this.hand.unselectAll();
-            this.play.addCard(card);
-            this.setPlayOptions();
+            if (card.rank == 15)
+                this.jokerRank(card);
+            else {
+                this.play.addCard(card);
+                this.setPlayOptions();
+            }
         }
 
         this.play.onCardClick = (card) => {
+            if (this.jokers[card.id]) {
+                card.rank = 15;
+                card.suit = 0;
+            }
+
             this.hand.addCard(card);
             this.setPlayOptions();
         }
@@ -271,7 +282,8 @@ export class Game {
         this.playButton = this.bga.statusBar.addActionButton(_('Play'), () => {
             this.bga.actions.performAction(
                 'actPlay', {
-                cardIds: this.play.getCards().map((card) => card.id)
+                cardIds: this.play.getCards().map((card) => card.id),
+                jokers: JSON.stringify(this.jokers),
             })
         }, {
             'destination': document.getElementById("playButton"),
@@ -292,6 +304,50 @@ export class Game {
 
         console.log("Ending game setup");
         this.setPlayOptions();
+    }
+
+    jokerRank(card) {
+        // Handle joker rank logic
+        let statusBar = this.bga.statusBar;
+
+        statusBar.removeActionButtons();
+
+        statusBar.setTitle('Select a rank.');
+        this.rankButtons = [];
+        for (let i = 2; i < 15; i++) {
+            this.rankButtons[i] = statusBar.addActionButton(_(`${this.cardTypes.rank[i]}`), () => {
+                this.jokerSuit(card, i);
+            });
+        }
+    }
+
+    jokerSuit(card, rank) {
+        // Handle joker suit selection logic
+        let statusBar = this.bga.statusBar;
+
+        statusBar.removeActionButtons();
+
+        statusBar.setTitle('Select a suit.');
+        this.suitButtons = [];
+        for (let i = 1; i < 5; i++) {
+            this.suitButtons[i] = statusBar.addActionButton(_(`${this.cardTypes["suitUnicode"][i]}`), () => {
+                this.jokerSet(card, rank, i);
+            });
+        }
+    }
+
+    jokerSet(card, rank, suit) {
+        // Handle joker set logic
+        let statusBar = this.bga.statusBar;
+
+        statusBar.removeActionButtons();
+        this.jokers[card.id] = { rank: rank, suit: suit };
+        card.rank = rank;
+        card.suit = suit;
+
+        this.play.addCard(card);
+        this.setPlayOptions();
+
     }
 
     enablePlay() {
@@ -397,7 +453,7 @@ export class Game {
             ////////////////////// skip demand
             for (let i = 0; i < handCards.length; i++) {
                 let card = handCards[i];
-                if (card.rank == 4) playableCards.push(card);
+                if (card.rank == 4 || card.rank == 15) playableCards.push(card);
             }
 
             if (playCards.length > 0) {
@@ -427,7 +483,15 @@ export class Game {
 
             for (let i = 0; i < handCards.length; i++) {
                 let card = handCards[i];
-                if (card.rank < 4 || card.rank == 13 && (st.battleKing > 0 || card.suit < 3)) playableCards.push(card);
+                if (
+                    card.rank < 4
+                    || card.rank == 13
+                    && (
+                        st.battleKing > 0
+                        || card.suit < 3
+                    )
+                    || card.rank == 15
+                ) playableCards.push(card);
             }
 
             if (playCards.length > 0) {
@@ -472,6 +536,7 @@ export class Game {
                     card.rank == st.rankDemand
                     || st.rankDemand == 20 && card.rank > 4 && card.rank < 11
                     || card.rank == 11
+                    || card.rank == 15
                 ) playableCards.push(card);
             }
 
@@ -490,9 +555,9 @@ export class Game {
             for (let i = 0; i < handCards.length; i++) {
                 let card = handCards[i];
                 if (
-                    card.rank > 4
-                    && card.rank < 11
+                    card.rank > 4 && card.rank < 11
                     && card.suit == st.suitDemand
+                    || card.rank == 15
                 ) playableCards.push(card);
             }
 
@@ -582,6 +647,7 @@ export class Game {
                 || card.suit == top.suit
                 || card.rank == top.rank
                 || top.rank == 12 // queen
+                || card.rank == 15 // joker
             ) playableCards.push(card);
         }
 
@@ -737,6 +803,7 @@ export class Game {
 
             for (let i = 0; i < st.playerIds.length; i++) {
                 let playerId = st.playerIds[i];
+                if (playerId == st.playerId) continue;
                 this.updateHandSize(playerId, args[`hand${playerId}`]);
             }
 

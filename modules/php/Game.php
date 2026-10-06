@@ -82,6 +82,15 @@ class Game extends \Bga\GameFramework\Table
         $currentPlayerId = $this->getPlayerIdByNo(1);
         $playerIds = array_keys($this->loadPlayersBasicInfos());
 
+        // reset jokers
+        foreach ($cards->getAllItems()->values() as $card) {
+            if ($card->joker == 1) {
+                $card->rank = 15;
+                $card->suit = 0;
+                $cards->updateItem($card, ['rank', 'suit']);
+            }
+        }
+
         $this->cardManager->deal();
 
         $st = [

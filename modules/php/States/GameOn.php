@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Bga\Games\makaucloudnein\States;
 
 use Bga\Games\makaucloudnein\Game;
-use Bga\Games\makaucloudnein\States\GameOn;
 use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\PossibleAction;
 use Bga\GameFramework\States\GameState;
 use Bga\GameFramework\UserException;
 use Bga\GameFramework\Actions\Types\IntArrayParam;
+use Bga\GameFramework\Actions\Types\JsonParam;
 use Bga\GameFramework\NotificationMessage;
 
 class GameOn extends GameState
@@ -111,6 +111,14 @@ class GameOn extends GameState
         $drawnCards = $cards->pickItems($draw, 'deck', ['hand', $currentPlayerId])->values();
         // this may have caused the discards to be reshuffled into a new deck...
         if ($cards->countItemsInLocation('discard') < 1) {
+            foreach ($cards->getItemsInLocation('deck')->values() as $card) {
+                if ($card->joker == 1) {
+                    $card->rank = 15;
+                    $card->suit = 0;
+                    $cards->updateItem($card, ['rank', 'suit']);
+                }
+            }
+            
             $discard = $cards->pickItem('deck', 'discard');
             while ($discard->rank < 5 || $discard->rank > 10)
                 $discard = $cards->pickItem('deck', 'discard');
@@ -149,7 +157,7 @@ class GameOn extends GameState
     }
 
     #[PossibleAction]
-    public function actPlay(#[IntArrayParam()] array $cardIds, int $currentPlayerId)
+    public function actPlay(#[IntArrayParam()] array $cardIds, #[JsonParam(associative: true)] array $jokers, int $currentPlayerId)
     {
         $game = $this->game;
         $cards = $game->cards;
@@ -164,7 +172,14 @@ class GameOn extends GameState
         $playedCards = [];
 
         for ($i = 0; $i < count($cardIds); $i++) {
-            $playedCards[] = $cards->getItemById($cardIds[$i]);
+            $cardId = $cardIds[$i];
+            $card = $cards->getItemById($cardId);
+            $playedCards[] = $card;
+            if (array_key_exists($cardId, $jokers)) {
+                $card->rank = $jokers[$cardId]['rank'];
+                $card->suit = $jokers[$cardId]['suit'];
+                $cards->updateItem($card, ['rank', 'suit']);
+            }
         }
 
         if ($st['skip'] > 0) {
@@ -367,14 +382,20 @@ class GameOn extends GameState
                 // WINNER!
                 return GameOver::class;
             }
+
             $st = $game->reset();
             $this->st = $st;
             $st['reshuffled'] = 1;
-            $st['_private'] = [
-                $currentPlayerId => [
-                    'hand' => $cards->getItemsInLocation(['hand', $currentPlayerId])
-                ]
-            ];
+            $st['_private'] = [];
+            for ($i = 0; $i < count($st['playerIds']); $i++) {
+                $playerId = $st['playerIds'][$i];
+
+                $st["hand{$playerId}"] = $cards->countItemsInLocation(['hand', $playerId]);
+
+                $st["_private"][$playerId] = [
+                    'hand' => $cards->getItemsInLocation(['hand', $playerId])
+                ];
+            }
         } else $this->bga->globals->set('state', json_encode($st));
 
         $st["hand{$currentPlayerId}"] = $handCards;
@@ -452,6 +473,7 @@ class GameOn extends GameState
 
         $st["hand{$onPlayerId}"] = $cards->countItemsInLocation(['hand', $onPlayerId]);
         $st['onPlayerId'] = $onPlayerId;
+        $st['playerName'] = $this->game->getPlayerNameById($onPlayerId);
         if (count($drawnCards) > 0)
             $st['_private'] = [
                 $onPlayerId => [
@@ -459,7 +481,7 @@ class GameOn extends GameState
                 ]
             ];
 
-        $this->game->bga->notify->all('CalledMakau', 'called makau', $st);
+        $this->game->bga->notify->all('CalledMakau', clienttranslate('${playerName} called makau.'), $st);
     }
 
     public function zombie(int $playerId)
