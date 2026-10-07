@@ -39,13 +39,9 @@
 }
 
 .ha-card-front {
-  background-size: 1500% auto;
-  background-image: url("img/cards.jpg");
+  background-size: 100%;
 }
 
 .ha-card-back {
-  background-size: 1500% auto;
-  background-image: url("img/cards.jpg");
-  background-position-x: calc(100% / 14 * 13);
-  background-position-y: 0;
+  background-size: 100%;
 }

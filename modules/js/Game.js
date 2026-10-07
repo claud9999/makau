@@ -174,13 +174,15 @@ export class Game {
             setupFrontDiv: (card, div) => {
                 div.dataset.suit = card.suit; // 1..4
                 div.dataset.rank = card.rank; // value 1..14
-                div.style.backgroundPositionX = `calc(100% / 13 * (${card.rank} - 2))`; // 14 is number of columns in stock image minus 1
-                div.style.backgroundPositionY = `calc(100% / 3 * (${card.suit} - 1))`; // 3 is number of rows in stock image minus 1
+                
+                let cardfn = `${card.rank}-${card.suit}.png`;
+                if (card.rank == 14)cardfn = 'joker.png';
+                div.style.backgroundImage = `url('${this.bga.images.getImgUrl(cardfn)}')`;
+
                 this.bga.gameui.addTooltipHtml(div.id, this.tooltip(card));
             },
             setupBackDiv: (card, div) => {
-                div.style.backgroundPositionX = `100%`;
-                div.style.backgroundPositionY = `0%`;
+                div.style.backgroundImage = `url('${this.bga.images.getImgUrl('back.png')}')`
             },
             isCardVisible: (card) => { return card.rank > 0; }
         });
@@ -749,12 +751,13 @@ export class Game {
 
             for (let i = 0; i < cards.length; i++) {
                 let card = cards[i];
+                if (card.rank < 5 || card.rank > 10) continue;
+                // only non-action cards
                 availableSuits[card.suit] = card.suit;
             }
 
             for (let i = 1; i < 5; i++) {
                 if (availableSuits[i] == undefined) continue;
-                // TODO: show emoji of the suit
                 this.suitButtons[i] = statusBar.addActionButton(_(`${this.cardTypes["suitUnicode"][i]}`), () => {
                     this.bga.actions.performAction(
                         'actPickSuit', {
