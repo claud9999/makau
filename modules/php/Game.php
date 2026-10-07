@@ -35,20 +35,20 @@ class Game extends \Bga\GameFramework\Table
                 ]
             ],
             "ranks" => [
-                2 => ['name' => 'Two'],
-                3 => ['name' => 'Three'],
-                4 => ['name' => 'Four'],
-                5 => ['name' => 'Five'],
-                6 => ['name' => 'Six'],
-                7 => ['name' => 'Seven'],
-                8 => ['name' => 'Eight'],
-                9 => ['name' => 'Nine'],
-                10 => ['name' => 'Ten'],
+                1 => ['name' => clienttranslate('Ace')],
+                2 => ['name' => clienttranslate('Two')],
+                3 => ['name' => clienttranslate('Three')],
+                4 => ['name' => clienttranslate('Four')],
+                5 => ['name' => clienttranslate('Five')],
+                6 => ['name' => clienttranslate('Six')],
+                7 => ['name' => clienttranslate('Seven')],
+                8 => ['name' => clienttranslate('Eight')],
+                9 => ['name' => clienttranslate('Nine')],
+                10 => ['name' => clienttranslate('Ten')],
                 11 => ['name' => clienttranslate('Jack')],
                 12 => ['name' => clienttranslate('Queen')],
                 13 => ['name' => clienttranslate('King')],
-                14 => ['name' => clienttranslate('Ace')],
-                15 => ['name' => clienttranslate('Joker')]
+                14 => ['name' => clienttranslate('Joker')]
             ]
         ];
     }
@@ -85,7 +85,7 @@ class Game extends \Bga\GameFramework\Table
         // reset jokers
         foreach ($cards->getAllItems()->values() as $card) {
             if ($card->joker == 1) {
-                $card->rank = 15;
+                $card->rank = 14;
                 $card->suit = 0;
                 $cards->updateItem($card, ['rank', 'suit']);
             }

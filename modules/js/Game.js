@@ -38,6 +38,7 @@ export class Game {
                 4: "&#9830;",
             },
             "rank": {
+                1: "Ace",
                 2: "Two",
                 3: "Three",
                 4: "Four",
@@ -50,8 +51,7 @@ export class Game {
                 11: "Jack",
                 12: "Queen",
                 13: "King",
-                14: "Ace",
-                15: "Joker"
+                14: "Joker"
             },
         }
 
@@ -92,10 +92,10 @@ export class Game {
                         break;
                 }
                 break;
-            case 14:
+            case 1:
                 r += ' (wild, demand next player play suit)';
                 break;
-            case 15:
+            case 14:
                 r += ' (can be played as any card at any time)';
                 break;
         }
@@ -173,8 +173,8 @@ export class Game {
             cardBorderRadius: "5%",
             setupFrontDiv: (card, div) => {
                 div.dataset.suit = card.suit; // 1..4
-                div.dataset.rank = card.rank; // value 2..14
-                div.style.backgroundPositionX = `calc(100% / 14 * (${card.rank} - 2))`; // 14 is number of columns in stock image minus 1
+                div.dataset.rank = card.rank; // value 1..14
+                div.style.backgroundPositionX = `calc(100% / 13 * (${card.rank} - 2))`; // 14 is number of columns in stock image minus 1
                 div.style.backgroundPositionY = `calc(100% / 3 * (${card.suit} - 1))`; // 3 is number of rows in stock image minus 1
                 this.bga.gameui.addTooltipHtml(div.id, this.tooltip(card));
             },
@@ -252,7 +252,7 @@ export class Game {
 
         this.hand.onCardClick = (card) => {
             if (args.gamestate.name != "GameOn") this.hand.unselectAll();
-            if (card.rank == 15)
+            if (card.rank == 14)
                 this.jokerRank(card);
             else {
                 this.play.addCard(card);
@@ -262,7 +262,7 @@ export class Game {
 
         this.play.onCardClick = (card) => {
             if (this.jokers[card.id]) {
-                card.rank = 15;
+                card.rank = 14;
                 card.suit = 0;
             }
 
@@ -310,7 +310,7 @@ export class Game {
         // Handle joker rank logic
         let statusBar = this.bga.statusBar;
         let st = this.st;
-        let allowed = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+        let allowed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
         statusBar.removeActionButtons();
 
@@ -468,7 +468,7 @@ export class Game {
             ////////////////////// skip demand
             for (let i = 0; i < handCards.length; i++) {
                 let card = handCards[i];
-                if (card.rank == 4 || card.rank == 15) playableCards.push(card);
+                if (card.rank == 4 || card.rank == 14) playableCards.push(card);
             }
 
             if (playCards.length > 0) {
@@ -499,13 +499,14 @@ export class Game {
             for (let i = 0; i < handCards.length; i++) {
                 let card = handCards[i];
                 if (
-                    card.rank < 4
+                    card.rank == 2
+                    || card.rank == 3
                     || card.rank == 13
                     && (
                         st.battleKing > 0
                         || card.suit < 3
                     )
-                    || card.rank == 15
+                    || card.rank == 14
                 ) playableCards.push(card);
             }
 
@@ -551,7 +552,7 @@ export class Game {
                     card.rank == st.rankDemand
                     || st.rankDemand == 20 && card.rank > 4 && card.rank < 11
                     || card.rank == 11
-                    || card.rank == 15
+                    || card.rank == 14
                 ) playableCards.push(card);
             }
 
@@ -572,7 +573,7 @@ export class Game {
                 if (
                     card.rank > 4 && card.rank < 11
                     && card.suit == st.suitDemand
-                    || card.rank == 15
+                    || card.rank == 14
                 ) playableCards.push(card);
             }
 
@@ -614,7 +615,7 @@ export class Game {
                 case 13:
                     if (card.suit < 3) newdemand = 'draw';
                     break;
-                case 14:
+                case 1:
                     newdemand = 'suit';
                     break;
             }
@@ -648,21 +649,25 @@ export class Game {
                     case 13:
                         if (card.suit < 3 && demand != 'draw') continue;
                         break;
-                    case 14:
+                    case 1:
                         if (demand != 'suit') continue;
                         break;
                 }
             }
 
             if (
-                demand == 'draw' && (card.rank < 4 || card.rank == 13 && st.battleKing > 0) // playing multiple draws
+                demand == 'draw' && (
+                    card.rank == 2
+                    || card.rank == 3
+                    || card.rank == 13 && st.battleKing > 0
+                ) // playing multiple draws
                 || demand == 'skip' && card.rank == 4 // playing multiple skips
-                || card.rank == 14 // ace
+                || card.rank == 1 // ace
                 || card.rank == 12 // queen
                 || card.suit == top.suit
                 || card.rank == top.rank
                 || top.rank == 12 // queen
-                || card.rank == 15 // joker
+                || card.rank == 14 // joker
             ) playableCards.push(card);
         }
 

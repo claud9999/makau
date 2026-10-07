@@ -114,7 +114,7 @@ class GameOn extends GameState
         if ($cards->countItemsInLocation('discard') < 1) {
             foreach ($cards->getItemsInLocation('deck')->values() as $card) {
                 if ($card->joker == 1) {
-                    $card->rank = 15;
+                    $card->rank = 14;
                     $card->suit = 0;
                     $cards->updateItem($card, ['rank', 'suit']);
                 }
@@ -245,7 +245,7 @@ class GameOn extends GameState
                     case 13: // K
                         if ($card->suit < 3) $newdemand = 'draw';
                         break;
-                    case 14: // A
+                    case 1: // A
                         $newdemand = 'suit';
                         break;
                 }
@@ -279,16 +279,20 @@ class GameOn extends GameState
                         case 13: // K
                             if ($demand != 'draw') return $game->err($currentPlayerId, 'You cannot play a king when another demand is in play');
                             break;
-                        case 14: // A
+                        case 1: // A
                             if ($demand != 'suit') return $game->err($currentPlayerId, 'You cannot play an ace when another demand is in play');
                             break;
                     }
                 }
 
                 if (
-                    $demand == 'draw' && ($card->rank < 4 || $card->rank == 13)
-                    || $demand = 'skip' && $card->rank == 4
-                    || $card->rank == 14 // A = wild
+                    $demand == 'draw' && (
+                        $card->rank == 2
+                        || $card->rank == 3
+                        || $card->rank == 13
+                    )
+                    || $demand == 'skip' && $card->rank == 4
+                    || $card->rank == 1 // A = wild
                     || $card->rank == 12 // Q = wild
                     || $card->suit == $top->suit
                     || $card->rank == $top->rank
@@ -356,7 +360,7 @@ class GameOn extends GameState
                             break;
                     }
                     break;
-                case 14:
+                case 1:
                     // A demands suit
                     $st['suitPick'] = $currentPlayerId;
                     $st['currentPlayerId'] = $currentPlayerId;

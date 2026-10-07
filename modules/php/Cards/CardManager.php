@@ -64,7 +64,7 @@ class CardManager
     {
         $cards = [];
         foreach ([1, 2, 3, 4] as $suit) {
-            foreach (range(2, 14) as $rank) {
+            foreach (range(1, 13) as $rank) {
                 $cards[] = [
                     'location' => 'deck',
                     'suit' => $suit,
@@ -76,13 +76,13 @@ class CardManager
         $cards[] = [
             'location' => 'deck',
             'suit' => 0,
-            'rank' => 15,
+            'rank' => 14,
             'joker' => 1
         ];
         $cards[] = [
             'location' => 'deck',
             'suit' => 0,
-            'rank' => 15,
+            'rank' => 14,
             'joker' => 1
         ];
         $this->cards->createItems($cards);
