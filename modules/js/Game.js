@@ -438,8 +438,8 @@ export class Game {
                 'onPlayerId': onPlayerId,
             }, {
                 checkAction: false,
-                checkPossibleActions: true,
-            },
+                checkPossibleAction: true,
+            }
         );
     }
 

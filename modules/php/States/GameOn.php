@@ -470,7 +470,7 @@ class GameOn extends GameState
     }
 
     #[PossibleAction]
-    public function actPickRank(#[IntParam()] int $rank, int $currentPlayerId)
+    public function actPickRank(int $rank, int $currentPlayerId)
     {
         $st = json_decode($this->bga->globals->get('state'), true);
 
@@ -493,7 +493,7 @@ class GameOn extends GameState
     }
 
     #[PossibleAction]
-    public function actPickSuit(#[IntParam()] int $suit, int $currentPlayerId)
+    public function actPickSuit(int $suit, int $currentPlayerId)
     {
         $game = $this->game;
 
@@ -522,7 +522,7 @@ class GameOn extends GameState
 
 
     #[PossibleAction]
-    public function actMakau(#[IntParam()] int $onPlayerId, int $currentPlayerId)
+    public function actMakau(int $onPlayerId, int $currentPlayerId)
     {
         $game = $this->game;
         $globals = $this->bga->globals;
