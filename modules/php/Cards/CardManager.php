@@ -40,24 +40,12 @@ class CardManager
 
         $this->reset();
 
+        foreach ($player_ids as $player_id)
+            $cards->pickItems(5, 'deck', ['hand', (int)$player_id])->values();
+
         $discard = $cards->pickItem('deck', 'discard');
         while ($discard->rank < 5 || $discard->rank > 10)
             $discard = $cards->pickItem('deck', 'discard');
-        $discards = $cards->getItemsInLocation('discard')->values();
-
-        $args = [
-            'deck' => $cards->countItemsInLocation('deck'),
-            'discards' => $discards,
-        ];
-
-        foreach ($player_ids as $player_id) {
-            $args["hand{$player_id}"] = 5;
-        }
-
-        foreach ($player_ids as $player_id) {
-            $args['hand'] = $cards->pickItems(5, 'deck', ['hand', (int)$player_id])->values();
-            $this->game->bga->notify->player((int)$player_id, 'NewHand', '', $args);
-        }
     }
 
     public function setup()

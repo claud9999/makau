@@ -13,6 +13,33 @@ use Bga\GameFramework\Actions\Types\IntArrayParam;
 use Bga\GameFramework\Actions\Types\JsonParam;
 use Bga\GameFramework\NotificationMessage;
 
+/*
+  This game supports players calling "Makau" on other
+  players during their turns, so this code dispenses with state
+  beyond this state and the GameOver state. Who is playing is
+  stored in the state global.
+
+  Any condition that results in a call to $game->err() is
+  unexpected. The client UI should never produce conditions
+  that would trigger these. Hence these messages are not translated.
+
+  All state information is stored in a state variable ($st)
+  and saved via the globals interface in the database as
+  JSON. The state is usually also sent to the client in
+  toto even though the client likely only needs a few
+  fields as it makes the code simpler.
+
+  For act* functions, the general pattern is that it loads
+  the state from the global state JSON, checks conditions,
+  executes changes, saves the state, adds any additional
+  details for the client to know, then notifies the client.
+
+  Most functions begin with the setting of local "shortcut"
+  variables such as $game for $this->game or $cards for $this->cards
+  just to make the code easier to read and possibly to give
+  a slight performance improvement.
+  */
+
 class GameOn extends GameState
 {
     public array $st;
@@ -23,7 +50,7 @@ class GameOn extends GameState
             $game,
             id: 31,
             type: StateType::MULTIPLE_ACTIVE_PLAYER,
-            descriptionMyTurn: clienttranslate('${you} may play cards or draw')
+            descriptionMyTurn: clienttranslate('${you} may play.')
         );
     }
 
@@ -36,10 +63,11 @@ class GameOn extends GameState
     public function actPass(int $currentPlayerId)
     {
         $game = $this->game;
+
         $st = json_decode($this->bga->globals->get('state'), true);
 
         if ($currentPlayerId != $st['currentPlayerId'])
-            return $game->err($currentPlayerId, 'not your turn');
+            return $game->err($currentPlayerId, 'It is not your turn.');
 
         if (
             $st['draw'] == 0
@@ -49,7 +77,7 @@ class GameOn extends GameState
             && $st['rankDemand'] == 0
             && $st['drew'] == 0
         )
-            return $game->err($currentPlayerId, 'have to draw before passing');
+            return $game->err($currentPlayerId, 'You have to draw before passing.');
 
         $skip = $st["skip{$currentPlayerId}"] + $st['skip'];
         if ($skip > 0) {
@@ -79,13 +107,14 @@ class GameOn extends GameState
 
         $this->bga->globals->set('state', json_encode($st));
 
+        // vvvvvv parameters not saved but sent to the client
         $st['playerId'] = $currentPlayerId;
         $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
-        $this->game->giveExtraTime($currentPlayerId);
+        $this->game->giveExtraTime($st['currentPlayerId']);
 
         $game->notify->all(
             'Pass',
-            clienttranslate('${playerName} passes'),
+            clienttranslate('${playerName} passes.'),
             $st,
         );
     }
@@ -95,14 +124,17 @@ class GameOn extends GameState
     {
         $game = $this->game;
         $cards = $game->cards;
+
         $st = json_decode($this->bga->globals->get('state'), true);
 
-        if ($currentPlayerId != $st['currentPlayerId']) return $game->err($currentPlayerId, 'not your turn');
+        if ($currentPlayerId != $st['currentPlayerId']) return $game->err($currentPlayerId, 'It is not your turn.');
 
-        if ($st['skip'] + $st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'have to skip');
-        if ($st['suitDemand'] > 0) return $game->err($currentPlayerId, 'have to match suit');
+        if ($st['skip'] + $st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'You have to skip.');
 
-        if ($st['drew'] > 0) return $game->err($currentPlayerId, 'can only draw once');
+        if ($st['suitDemand'] > 0) return $game->err($currentPlayerId, 'You have to match suit.');
+
+        if ($st['drew'] > 0) return $game->err($currentPlayerId, 'You can only draw once.');
+
         $forcedDraw = false;
         $draw = $st['draw'];
         if ($draw == 0) $draw = 1;
@@ -142,8 +174,10 @@ class GameOn extends GameState
 
         $this->bga->globals->set('state', json_encode($st));
 
+        // vvvvvv parameters not saved but sent to the client
         $st['playerId'] = $currentPlayerId;
         $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
+        $st['playerDrew'] = $draw;
         $st["hand{$currentPlayerId}"] = $cards->countItemsInLocation(['hand', $currentPlayerId]);
         $st['_private'] = [
             $currentPlayerId => [
@@ -151,9 +185,11 @@ class GameOn extends GameState
             ]
         ];
 
+        $message = '${playerName} draws a card from the deck.';
+        if ($draw > 1) $message = '${playerName} draws ${playerDrew} cards from the deck.';
         $game->notify->all(
             'DrawCards',
-            clienttranslate('${playerName} takes card(s) from the deck'),
+            clienttranslate($message),
             $st,
         );
     }
@@ -163,13 +199,14 @@ class GameOn extends GameState
     {
         $game = $this->game;
         $cards = $game->cards;
+
         $st = json_decode($this->bga->globals->get('state'), true);
 
         if ($currentPlayerId != $st['currentPlayerId'])
-            return $game->err($currentPlayerId, 'not your turn');
+            return $game->err($currentPlayerId, 'It is not your turn.');
 
-        if ($st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'you must pass');
-        if (count($cardIds) < 1) return $game->err($currentPlayerId, 'no cards to play');
+        if ($st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'You must pass.');
+        if (count($cardIds) < 1) return $game->err($currentPlayerId, 'You have no cards to play.');
 
         $playedCards = [];
 
@@ -188,7 +225,7 @@ class GameOn extends GameState
             //////////////// pending skips            
             $playableCards = $this->getSkipCards($playedCards);
             if (count($playableCards) != count($playedCards))
-                return $game->err($currentPlayerId, 'you can only add skip cards');
+                return $game->err($currentPlayerId, 'You can only add skip cards.');
 
             for ($i = 0; $i < count($playableCards); $i++) {
                 $st['skip']++;
@@ -197,11 +234,11 @@ class GameOn extends GameState
             //////////////// pending draw
             $playableCards = $this->getDrawCards($playedCards);
             if (count($playableCards) != count($playedCards))
-                return $game->err($currentPlayerId, 'you can only add draw cards');
+                return $game->err($currentPlayerId, 'You can only add draw cards.');
         } else if ($st['rankDemand']) {
             //////////////// rank demand
             if (count($playedCards) > 1)
-                return $game->err($currentPlayerId, 'you can only play one card');
+                return $game->err($currentPlayerId, 'You can only play one card.');
 
             $card = $playedCards[0];
             if (
@@ -212,7 +249,7 @@ class GameOn extends GameState
         } else if ($st['suitDemand']) {
             //////////////// suit demand
             if (count($playedCards) > 1)
-                return $game->err($currentPlayerId, 'you can only play one card');
+                return $game->err($currentPlayerId, 'You can only play one card.');
 
             $card = $playedCards[0];
             if (
@@ -251,7 +288,7 @@ class GameOn extends GameState
                 }
 
                 if ($demand != '' && $newdemand != $demand)
-                    return $game->err($currentPlayerId, 'You cannot play multiple demands');
+                    return $game->err($currentPlayerId, 'You cannot play multiple demands.');
 
                 $demand = $newdemand;
             }
@@ -264,23 +301,23 @@ class GameOn extends GameState
 
                 if ($demand != '') {
                     switch ($card->rank) {
+                        case 1: // A
+                            if ($demand != 'suit') return $game->err($currentPlayerId, 'You cannot play an ace when another demand is in play.');
+                            break;
                         case 2:
-                            if ($demand != 'draw') return $game->err($currentPlayerId, 'You cannot play a two when another demand is in play');
+                            if ($demand != 'draw') return $game->err($currentPlayerId, 'You cannot play a two when another demand is in play.');
                             break;
                         case 3:
-                            if ($demand != 'draw') return $game->err($currentPlayerId, 'You cannot play a three when another demand is in play');
+                            if ($demand != 'draw') return $game->err($currentPlayerId, 'You cannot play a three when another demand is in play.');
                             break;
                         case 4:
-                            if ($demand != 'skip') return $game->err($currentPlayerId, 'You cannot play a four when another demand is in play');
+                            if ($demand != 'skip') return $game->err($currentPlayerId, 'You cannot play a four when another demand is in play.');
                             break;
                         case 11: // J
-                            if ($demand != 'rank') return $game->err($currentPlayerId, 'You cannot play a jack when another demand is in play');
+                            if ($demand != 'rank') return $game->err($currentPlayerId, 'You cannot play a jack when another demand is in play.');
                             break;
                         case 13: // K
-                            if ($demand != 'draw') return $game->err($currentPlayerId, 'You cannot play a king when another demand is in play');
-                            break;
-                        case 1: // A
-                            if ($demand != 'suit') return $game->err($currentPlayerId, 'You cannot play an ace when another demand is in play');
+                            if ($demand != 'draw') return $game->err($currentPlayerId, 'You cannot play a king when another demand is in play.');
                             break;
                     }
                 }
@@ -303,7 +340,7 @@ class GameOn extends GameState
                 } else {
                     return $game->err(
                         $currentPlayerId,
-                        'You cannot play ' . $this->getCardName($card) . ' on top of ' . $this->getCardName($top)
+                        'You cannot play the ' . $this->getCardName($card) . ' on top of the ' . $this->getCardName($top) . '.'
                     );
                 }
             }
@@ -384,16 +421,30 @@ class GameOn extends GameState
 
         $handCards = $cards->countItemsInLocation(['hand', $currentPlayerId]);
         if ($handCards == 0) {
+            ////// WINNNNNNNNNNNN
+
+            // Note: no point saving the current state, it will be reset below.
+
+            $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
+            $game->notify->all('WinHand', clienttranslate('${playerName} wins this hand!'), $st);
+
             $playerScore = $this->bga->playerScore;
             $playerScore->inc($currentPlayerId, 1);
             if ($playerScore->get($currentPlayerId) > 9) {
-                // WINNER!
                 return GameOver::class;
             }
 
             $st = $game->reset();
+
             $this->st = $st;
+
+            $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
+
+            $this->bga->globals->set('state', json_encode($st));
+
+            // vvvvvv parameters not saved but sent to the client
             $st['reshuffled'] = 1;
+
             $st['_private'] = [];
             for ($i = 0; $i < count($st['playerIds']); $i++) {
                 $playerId = $st['playerIds'][$i];
@@ -404,14 +455,30 @@ class GameOn extends GameState
                     'hand' => $cards->getItemsInLocation(['hand', $playerId])
                 ];
             }
-        } else $this->bga->globals->set('state', json_encode($st));
 
-        $st["hand{$currentPlayerId}"] = $handCards;
-        $st['playerId'] = $currentPlayerId;
-        $st['cards'] = $playedCards;
-        $st['discard'] = $cards->getItemsInLocation('discard')->values();
+            $st['playerId'] = $currentPlayerId;
+            $st['discard'] = $cards->getItemsInLocation('discard')->values();
 
-        $game->notify->all('PlayCards', '', $st);
+            $game->notify->all('NewHand', clienttranslate('The deck is shuffled and a new hand dealt to each player.'), $st);
+        } else {
+            $this->bga->globals->set('state', json_encode($st));
+
+            $message = '${playerName} plays the ';
+            for ($i = 0; $i < count($playedCards); $i++) {
+                $message = $message . $this->getCardName($playedCards[$i]);
+                if ($i < count($playedCards)) $message = $message . ', ';
+            }
+            $message = $message . '.';
+
+            // vvvvvv parameters not saved but sent to the client
+            $st['playerName'] = $this->game->getPlayerNameById($currentPlayerId);
+            $st["hand{$currentPlayerId}"] = $handCards;
+            $st['playerId'] = $currentPlayerId;
+            $st['cards'] = $playedCards;
+            $st['discard'] = $cards->getItemsInLocation('discard')->values();
+
+            $game->notify->all('PlayCards', clienttranslate($message), $st);
+        }
     }
 
     #[PossibleAction]
@@ -433,12 +500,17 @@ class GameOn extends GameState
 
         $this->bga->globals->set('state', json_encode($st));
 
-        $this->game->bga->notify->all('Selected', 'Rank selected', $st);
+        // vvvvvv parameters not saved but sent to the client
+        $st['playerName'] = $this->game->getPlayerNameById($currentPlayerId);
+
+        $this->game->bga->notify->all('Selected', clienttranslate('${playerName} demands everyone play ${rankDemand}.'), $st);
     }
 
     #[PossibleAction]
     public function actPickSuit(int $suit, int $currentPlayerId)
     {
+        $game = $this->game;
+
         $st = json_decode($this->bga->globals->get('state'), true);
 
         if ($st['suitPick'] != $currentPlayerId) return null;
@@ -454,7 +526,14 @@ class GameOn extends GameState
 
         $this->bga->globals->set('state', json_encode($st));
 
-        $this->game->bga->notify->all('Selected', 'Suit selected', $st);
+        // vvvvvv parameters not saved but sent to the client
+        $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
+        if ($suit == 20)
+            $st['suitName'] = 'Any';
+        else
+            $st['suitName'] = $game->cardTypes['suit'][$st['suitDemand']]['name'];
+
+        $this->game->bga->notify->all('Selected', clienttranslate('${playerName} demands the next player play a non-action card of suit ${suitName}.'), $st);
     }
 
 
@@ -479,22 +558,29 @@ class GameOn extends GameState
 
         $globals->set('state', json_encode($st));
 
+        // vvvvvv parameters not saved but sent to the client
         $st["hand{$onPlayerId}"] = $cards->countItemsInLocation(['hand', $onPlayerId]);
         $st['onPlayerId'] = $onPlayerId;
-        $st['playerName'] = $this->game->getPlayerNameById($onPlayerId);
-        if (count($drawnCards) > 0)
+        $st['playerName'] = $this->game->getPlayerNameById($currentPlayerId);
+
+        $message = '${playerName} called makau.';
+
+        if (count($drawnCards) > 0) {
             $st['_private'] = [
                 $onPlayerId => [
                     'cards' => $drawnCards
                 ]
-            ];
+            ];            
 
-        $this->game->bga->notify->all('CalledMakau', clienttranslate('${playerName} called makau.'), $st);
+            $st['onPlayerName'] = $this->game->getPlayerNameById($onPlayerId);
+            $message = '${playerName} called makau on ${onPlayerName}, who draws 5.';
+        }
+
+        $this->game->bga->notify->all('CalledMakau', clienttranslate($message), $st);
     }
 
     public function zombie(int $playerId)
     {
-        // We must implement this so BGA can auto play in the case a player becomes a zombie, but for this tutorial we won't handle this case
         throw new UserException("Not implemented: zombie for player {$playerId}");
     }
 
@@ -529,7 +615,7 @@ class GameOn extends GameState
 
     function getCardName($card): string
     {
-        return ('The ' . $this->game->cardTypes['ranks'][$card->rank]['name'] . " of " . $this->game->cardTypes['suits'][$card->suit]['name'] . 's');
+        return ($this->game->cardTypes['rank'][$card->rank]['name'] . " of " . $this->game->cardTypes['suit'][$card->suit]['name'] . 's');
     }
 
     function getCardNames($cards): string

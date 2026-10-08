@@ -174,9 +174,9 @@ export class Game {
             setupFrontDiv: (card, div) => {
                 div.dataset.suit = card.suit; // 1..4
                 div.dataset.rank = card.rank; // value 1..14
-                
+
                 let cardfn = `${card.rank}-${card.suit}.png`;
-                if (card.rank == 14)cardfn = 'joker.png';
+                if (card.rank == 14) cardfn = 'joker.png';
                 div.style.backgroundImage = `url('${this.bga.images.getImgUrl(cardfn)}')`;
 
                 this.bga.gameui.addTooltipHtml(div.id, this.tooltip(card));
@@ -645,6 +645,7 @@ export class Game {
                         break;
                     case 4:
                         if (demand != 'skip') continue;
+                        break;
                     case 11:
                         if (demand != 'rank') continue;
                         break;
@@ -771,8 +772,7 @@ export class Game {
                     suit: 20
                 });
             });
-        } else
-            statusBar.setTitle(`${this.bga.players.getPlayerById(st.currentPlayerId).name} is selecting a suit.`);
+        }
     }
 
     stateUpdate(args) {
@@ -818,31 +818,35 @@ export class Game {
     async notif_PlayCards(args) {
         let st = this.st;
 
-        if (args.reshuffled > 0) {
-            this.deck.setCardNumber(args.deck);
+        this.stateUpdate(args);
 
-            await this.discard.removeAll();
-            await this.discard.addCards(Array.from(Object.values(args.discard)));
+        await this.discard.addCards(Array.from(Object.values(args.cards)));
 
-            for (let i = 0; i < st.playerIds.length; i++) {
-                let playerId = st.playerIds[i];
-                if (playerId == st.playerId) continue;
-                this.updateHandSize(playerId, args[`hand${playerId}`]);
-            }
+        this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
 
-            await this.play.removeAll();
+        this.setPlayOptions();
+    }
 
-            await this.hand.removeAll();
-            await this.hand.addCards(args._private.hand);
+    async notif_NewHand(args) {
+        let st = this.st;
 
-            this.stateUpdate(args);
-        } else {
-            this.stateUpdate(args);
+        this.deck.setCardNumber(args.deck);
 
-            await this.discard.addCards(Array.from(Object.values(args.cards)));
+        await this.discard.removeAll();
+        await this.discard.addCards(Array.from(Object.values(args.discard)));
 
-            this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
+        for (let i = 0; i < st.playerIds.length; i++) {
+            let playerId = st.playerIds[i];
+            if (playerId == st.playerId) continue;
+            this.updateHandSize(playerId, args[`hand${playerId}`]);
         }
+
+        await this.play.removeAll();
+
+        await this.hand.removeAll();
+        await this.hand.addCards(args._private.hand);
+
+        this.stateUpdate(args);
 
         this.setPlayOptions();
     }
@@ -863,6 +867,10 @@ export class Game {
         }
 
         this.setPlayOptions();
+    }
+
+    async notif_WinHand(args, notif) {
+        this.bga.statusBar.setTitle('win');
     }
 
     async notif_InvalidPlay(args) {

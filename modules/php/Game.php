@@ -20,7 +20,7 @@ class Game extends \Bga\GameFramework\Table
         $this->cards = $this->cardManager->cards;
 
         $this->cardTypes = [
-            "suits" => [
+            "suit" => [
                 1 => [
                     'name' => clienttranslate('Spade')
                 ],
@@ -34,7 +34,7 @@ class Game extends \Bga\GameFramework\Table
                     'name' => clienttranslate('Diamond')
                 ]
             ],
-            "ranks" => [
+            "rank" => [
                 1 => ['name' => clienttranslate('Ace')],
                 2 => ['name' => clienttranslate('Two')],
                 3 => ['name' => clienttranslate('Three')],
