@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Bga\Games\makaucloudnein;
 
-use Bga\Games\makaucloudnein\States\GameOn;
+use Bga\Games\makaucloudnein\States\GameStart;
 use Bga\Games\makaucloudnein\Cards\CardManager;
 
 class Game extends \Bga\GameFramework\Table
@@ -150,7 +150,9 @@ class Game extends \Bga\GameFramework\Table
 
         $this->reset();
 
-        return GameOn::class;
+        $this->activeNextPlayer();
+
+        return GameStart::class;
     }
 
     public function getGameProgression()

@@ -420,12 +420,27 @@ export class Game {
     }
 
     callMakau(activePlayerId, onPlayerId) {
-        if (this.st[`hand${onPlayerId}`] <= 1)
-            return this.bga.actions.performAction('actMakau',
-                {
-                    'currentPlayerId': this.st.playerId,
-                    'onPlayerId': onPlayerId,
-                });
+        let st = this.st;
+
+        if (
+            this.bga.players.isCurrentPlayerSpectator()
+            || st[`makau{onPlayerId}`] > 0
+        ) return;
+
+        if (activePlayerId == onPlayerId) {
+            if (this.hand.cards.length != 1) return;
+        } else {
+            if (this[`hand${onPlayerId}`].cards.length != 1) return;
+        }
+
+        return this.bga.actions.performAction('actMakau',
+            {
+                'onPlayerId': onPlayerId,
+            }, {
+                checkAction: false,
+                checkPossibleActions: true,
+            },
+        );
     }
 
     setPlayOptions() {
@@ -442,14 +457,15 @@ export class Game {
         this.disablePass();
 
         let currentPlayerId = this.bga.players.getCurrentPlayerId();
+        let activePlayerId = this.bga.players.getActivePlayerId();
 
         statusBar.removeActionButtons();
 
         let playableCards = [];
 
-        if (st.currentPlayerId != currentPlayerId) {
+        if (activePlayerId != currentPlayerId) {
             statusBar.setTitle(_("${playerName} is playing now."), {
-                "playerName": players.getPlayerById(st.currentPlayerId).name,
+                "playerName": players.getPlayerById(activePlayerId).name,
             });
 
             hand.setSelectionMode('single', []);
@@ -458,7 +474,7 @@ export class Game {
 
         // handle skips first, 'cause if there's also other demands,
         // they don't apply to the skipped player
-        if (st[`skip${st.currentPlayerId}`] > 0) {
+        if (st[`skip${currentPlayerId}`] > 0) {
             ////////////////////// must skip
             statusBar.setTitle(_('You must pass.'));
             this.enablePass();
@@ -700,10 +716,12 @@ export class Game {
     pickRank() {
         let statusBar = this.bga.statusBar;
         let st = this.st;
+        let activePlayerId = this.bga.players.getActivePlayerId();
+        let currentPlayerId = this.bga.players.getCurrentPlayerId();
 
         statusBar.removeActionButtons();
 
-        if (st.currentPlayerId == this.playerId) {
+        if (activePlayerId == currentPlayerId) {
             let cards = this.hand.cards;
 
             statusBar.setTitle('Select a rank.');
@@ -734,7 +752,7 @@ export class Game {
                 });
             });
         } else {
-            statusBar.setTitle(`${this.bga.players.getPlayerById(st.currentPlayerId).name} is selecting a rank.`);
+            statusBar.setTitle(`${this.bga.players.getPlayerById(activePlayerId).name} is selecting a rank.`);
         }
     }
 
@@ -743,7 +761,7 @@ export class Game {
         let st = this.st;
         statusBar.removeActionButtons();
 
-        if (st.currentPlayerId == this.playerId) {
+        if (this.bga.players.getActivePlayerId() == this.playerId) {
             let cards = this.hand.cards;
 
             statusBar.setTitle('Select a suit.');
@@ -786,9 +804,10 @@ export class Game {
         this.stateUpdate(args);
 
         st.suitDemand = 0;
+        let currentPlayerId = this.bga.players.getCurrentPlayerId();
 
         //carry skips forward
-        st[`skip${this.st.currentPlayerId}`] = args.skip;
+        st[`skip${currentPlayerId}`] = args.skip;
 
         st.skip = 0;
         st.draw = 0;

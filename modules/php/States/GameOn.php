@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Bga\Games\makaucloudnein\States;
 
+use Bga\Games\makaucloudnein\States\GameOver;
+use Bga\Games\makaucloudnein\States\NextPlayer;
+use Bga\Games\makaucloudnein\States\PrevPlayer;
+
 use Bga\Games\makaucloudnein\Game;
 use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\PossibleAction;
@@ -58,8 +62,8 @@ class GameOn extends GameState
     {
         $game = $this->game;
         //$this->gamestate->setAllPlayersMultiactive();
-        $game->activeNextPlayer();
-        $game->giveExtraTime($this->game->getCurrentPlayerId());
+        //        $game->activeNextPlayer();
+        //       $game->giveExtraTime($this->game->getCurrentPlayerId());
     }
 
     #[PossibleAction]
@@ -68,9 +72,6 @@ class GameOn extends GameState
         $game = $this->game;
 
         $st = json_decode($this->bga->globals->get('state'), true);
-
-        if ($currentPlayerId != $st['currentPlayerId'])
-            return $game->err($currentPlayerId, 'It is not your turn.');
 
         if (
             $st['draw'] == 0
@@ -103,26 +104,20 @@ class GameOn extends GameState
             }
         }
 
-        if ($st['reverse'] > 0) {
-            $st['currentPlayerId'] = $this->prevPlayerId($currentPlayerId);
-            $game->activePreviousPlayer();
-        } else {
-            $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
-            $game->activeNextPlayer();
-        }
-
         $this->bga->globals->set('state', json_encode($st));
 
         // vvvvvv parameters not saved but sent to the client
         $st['playerId'] = $currentPlayerId;
         $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
-        $this->game->giveExtraTime($st['currentPlayerId']);
 
         $game->notify->all(
             'Pass',
             clienttranslate('${playerName} passes.'),
             $st,
         );
+
+        if ($st['reverse'] > 0) return PrevPlayer::class;
+        else return NextPlayer::class;
     }
 
     #[PossibleAction]
@@ -132,8 +127,6 @@ class GameOn extends GameState
         $cards = $game->cards;
 
         $st = json_decode($this->bga->globals->get('state'), true);
-
-        if ($currentPlayerId != $st['currentPlayerId']) return $game->err($currentPlayerId, 'It is not your turn.');
 
         if ($st['skip'] + $st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'You have to skip.');
 
@@ -173,10 +166,6 @@ class GameOn extends GameState
             $st['reverse'] = 0;
             $st['battleKing'] = 0;
             $st['drew'] = 0;
-
-            $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
-            $game->activeNextPlayer();
-            $game->giveExtraTime($st['currentPlayerId']);
         }
 
         $this->bga->globals->set('state', json_encode($st));
@@ -199,6 +188,8 @@ class GameOn extends GameState
             clienttranslate($message),
             $st,
         );
+
+        if ($forcedDraw) return NextPlayer::class;
     }
 
     #[PossibleAction]
@@ -208,9 +199,6 @@ class GameOn extends GameState
         $cards = $game->cards;
 
         $st = json_decode($this->bga->globals->get('state'), true);
-
-        if ($currentPlayerId != $st['currentPlayerId'])
-            return $game->err($currentPlayerId, 'It is not your turn.');
 
         if ($st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'You must pass.');
         if (count($cardIds) < 1) return $game->err($currentPlayerId, 'You have no cards to play.');
@@ -361,16 +349,6 @@ class GameOn extends GameState
             $st['rankDemand'] = 0;
         }
 
-        if ($st['reverse'] > 0) {
-            $st['currentPlayerId'] = $this->prevPlayerId($currentPlayerId);
-            $game->activePreviousPlayer();
-        } else {
-            $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
-            $game->activeNextPlayer();
-        }
-
-        $this->game->giveExtraTime($st['currentPlayerId']);
-
         for ($i = 0; $i < count($playedCards); $i++) {
             $card = $playedCards[$i];
             switch ($card->rank) {
@@ -386,12 +364,10 @@ class GameOn extends GameState
                 case 11:
                     // J demands rank
                     $st['rankPick'] = $currentPlayerId;
-                    $st['currentPlayerId'] = $currentPlayerId;
                     break;
                 case 13:
                     switch ($card->suit) {
                         case 1: // KS back draw 5
-                            $st['currentPlayerId'] = $this->prevPlayerId($currentPlayerId);
                             $st['reverse'] = 1;
                         case 2: // KH draw 5
                             $st['battleKing'] = 5;
@@ -410,7 +386,6 @@ class GameOn extends GameState
                 case 1:
                     // A demands suit
                     $st['suitPick'] = $currentPlayerId;
-                    $st['currentPlayerId'] = $currentPlayerId;
                     break;
             }
         }
@@ -447,10 +422,6 @@ class GameOn extends GameState
             $st = $game->reset();
 
             $this->st = $st;
-
-            $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
-            $game->activeNextPlayer();
-            $game->giveExtraTime($st['currentPlayerId']);
 
             $this->bga->globals->set('state', json_encode($st));
 
@@ -491,10 +462,15 @@ class GameOn extends GameState
 
             $game->notify->all('PlayCards', clienttranslate($message), $st);
         }
+
+        if ($st['rankPick'] == 0 && $st['suitPick'] == 0) {
+            if ($st['reverse'] > 0) return PrevPlayer::class;
+            else return NextPlayer::class;
+        }
     }
 
     #[PossibleAction]
-    public function actPickRank(int $rank, int $currentPlayerId)
+    public function actPickRank(#[IntParam()] int $rank, int $currentPlayerId)
     {
         $st = json_decode($this->bga->globals->get('state'), true);
 
@@ -505,25 +481,19 @@ class GameOn extends GameState
         $st['rankDemand'] = $rank;
         $st['lastJack'] = $currentPlayerId;
 
-        if ($st['reverse'] > 0) {
-            $st['currentPlayerId'] = $this->prevPlayerId($currentPlayerId);
-            $game->activePreviousPlayer();
-        } else {
-            $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
-            $game->activeNextPlayer();
-        }
-        $game->giveExtraTime($st['currentPlayerId']);
-
         $this->bga->globals->set('state', json_encode($st));
 
         // vvvvvv parameters not saved but sent to the client
         $st['playerName'] = $this->game->getPlayerNameById($currentPlayerId);
 
         $this->game->bga->notify->all('Selected', clienttranslate('${playerName} demands everyone play ${rankDemand}.'), $st);
+
+        if ($st['reverse'] > 0) return PrevPlayer::class;
+        else return NextPlayer::class;
     }
 
     #[PossibleAction]
-    public function actPickSuit(int $suit, int $currentPlayerId)
+    public function actPickSuit(#[IntParam()] int $suit, int $currentPlayerId)
     {
         $game = $this->game;
 
@@ -535,15 +505,6 @@ class GameOn extends GameState
 
         $st['suitDemand'] = $suit;
 
-        if ($st['reverse'] > 0) {
-            $st['currentPlayerId'] = $this->prevPlayerId($currentPlayerId);
-            $game->activePreviousPlayer();
-        } else {
-            $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
-            $game->activeNextPlayer();
-        }
-        $game->giveExtraTime($st['currentPlayerId']);
-
         $this->bga->globals->set('state', json_encode($st));
 
         // vvvvvv parameters not saved but sent to the client
@@ -554,38 +515,51 @@ class GameOn extends GameState
             $st['suitName'] = $game->cardTypes['suit'][$st['suitDemand']]['name'];
 
         $this->game->bga->notify->all('Selected', clienttranslate('${playerName} demands the next player play a non-action card of suit ${suitName}.'), $st);
+
+        if ($st['reverse'] > 0) return PrevPlayer::class;
+        else return NextPlayer::class;
     }
 
 
     #[PossibleAction]
-    public function actMakau(int $currentPlayerId, int $onPlayerId)
+    public function actMakau(#[IntParam()] int $onPlayerId, int $currentPlayerId)
     {
+        $game = $this->game;
         $globals = $this->bga->globals;
-        $cards = $this->game->cards;
+        $cards = $game->cards;
+
+        $globals->set('foo', '1');
 
         $st = json_decode($this->bga->globals->get('state'), true);
+        $globals->set('foo', '2');
 
-        if ($st["makau{$onPlayerId}"] > 0) return;
+        if ($st["makau{$onPlayerId}"] > 0 || $cards->countItemsInLocation(['hand', $onPlayerId]) != 1) {
+            return;
+        }
+        $globals->set('foo', '3');
 
-        $st["makau{$onPlayerId}"] = $onPlayerId;
+        $st["makau{$onPlayerId}"] = $currentPlayerId;
+        $globals->set('foo', '4'    );
 
         if ($currentPlayerId != $onPlayerId) {
             $drawnCards = $cards->pickItems(5, 'deck', ['hand', $onPlayerId])->values();
-            $st['deck'] = $cards->countItemsInLocation('deck');
-        } else {
-            $drawnCards = [];
         }
+        $globals->set('foo', '5');
 
         $globals->set('state', json_encode($st));
+        $globals->set('foo', '6');
 
         // vvvvvv parameters not saved but sent to the client
         $st["hand{$onPlayerId}"] = $cards->countItemsInLocation(['hand', $onPlayerId]);
         $st['onPlayerId'] = $onPlayerId;
         $st['playerName'] = $this->game->getPlayerNameById($currentPlayerId);
+        $st['deck'] = $cards->countItemsInLocation('deck');
+        $globals->set('foo', '7');
 
         $message = '${playerName} called makau.';
 
-        if (count($drawnCards) > 0) {
+        $globals->set('foo', '8');
+        if ($currentPlayerId != $onPlayerId) {
             $st['_private'] = [
                 $onPlayerId => [
                     'cards' => $drawnCards
@@ -595,8 +569,12 @@ class GameOn extends GameState
             $st['onPlayerName'] = $this->game->getPlayerNameById($onPlayerId);
             $message = '${playerName} called makau on ${onPlayerName}, who draws 5.';
         }
+        $globals->set('foo', '9');
 
-        $this->game->bga->notify->all('CalledMakau', clienttranslate($message), $st);
+        $game->bga->notify->all('CalledMakau', clienttranslate($message), $st);
+        $globals->set('foo', '10');
+
+        return GameOn::class;
     }
 
     public function zombie(int $playerId)

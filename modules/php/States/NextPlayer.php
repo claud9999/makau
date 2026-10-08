@@ -4,27 +4,28 @@ declare(strict_types=1);
 
 namespace Bga\Games\makaucloudnein\States;
 
+use Bga\Games\makaucloudnein\States\GameOn;
+
 use Bga\Games\makaucloudnein\Game;
 use Bga\GameFramework\StateType;
-use Bga\GameFramework\States\PossibleAction;
 use Bga\GameFramework\States\GameState;
-use Bga\GameFramework\UserException;
-use Bga\GameFramework\Actions\Types\IntArrayParam;
-use Bga\GameFramework\NotificationMessage;
 
-class GameOver extends GameState
+class NextPlayer extends GameState
 {
     public function __construct(protected Game $game)
     {
         parent::__construct(
             $game,
-            id: 98,
+            id: 35,
             type: StateType::GAME,
-            descriptionMyTurn: clienttranslate('game over')
+            descriptionMyTurn: clienttranslate('next player')
         );
     }
 
     public function onEnteringState()
     {
+        $this->game->activeNextPlayer();
+
+        return GameOn::class;
     }
 }
