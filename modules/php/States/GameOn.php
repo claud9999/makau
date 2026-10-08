@@ -49,14 +49,17 @@ class GameOn extends GameState
         parent::__construct(
             $game,
             id: 31,
-            type: StateType::MULTIPLE_ACTIVE_PLAYER,
+            type: StateType::ACTIVE_PLAYER,
             descriptionMyTurn: clienttranslate('${you} may play.')
         );
     }
 
     function onEnteringState()
     {
-        $this->gamestate->setAllPlayersMultiactive();
+        $game = $this->game;
+        //$this->gamestate->setAllPlayersMultiactive();
+        $game->activeNextPlayer();
+        $game->giveExtraTime($this->game->getCurrentPlayerId());
     }
 
     #[PossibleAction]
@@ -100,10 +103,13 @@ class GameOn extends GameState
             }
         }
 
-        if ($st['reverse'] > 0)
+        if ($st['reverse'] > 0) {
             $st['currentPlayerId'] = $this->prevPlayerId($currentPlayerId);
-        else
+            $game->activePreviousPlayer();
+        } else {
             $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
+            $game->activeNextPlayer();
+        }
 
         $this->bga->globals->set('state', json_encode($st));
 
@@ -169,7 +175,8 @@ class GameOn extends GameState
             $st['drew'] = 0;
 
             $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
-            $this->game->giveExtraTime($st['currentPlayerId']);
+            $game->activeNextPlayer();
+            $game->giveExtraTime($st['currentPlayerId']);
         }
 
         $this->bga->globals->set('state', json_encode($st));
@@ -354,10 +361,13 @@ class GameOn extends GameState
             $st['rankDemand'] = 0;
         }
 
-        if ($st['reverse'] > 0)
+        if ($st['reverse'] > 0) {
             $st['currentPlayerId'] = $this->prevPlayerId($currentPlayerId);
-        else
+            $game->activePreviousPlayer();
+        } else {
             $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
+            $game->activeNextPlayer();
+        }
 
         $this->game->giveExtraTime($st['currentPlayerId']);
 
@@ -439,6 +449,8 @@ class GameOn extends GameState
             $this->st = $st;
 
             $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
+            $game->activeNextPlayer();
+            $game->giveExtraTime($st['currentPlayerId']);
 
             $this->bga->globals->set('state', json_encode($st));
 
@@ -493,10 +505,14 @@ class GameOn extends GameState
         $st['rankDemand'] = $rank;
         $st['lastJack'] = $currentPlayerId;
 
-        if ($st['reverse'] > 0)
+        if ($st['reverse'] > 0) {
             $st['currentPlayerId'] = $this->prevPlayerId($currentPlayerId);
-        else
+            $game->activePreviousPlayer();
+        } else {
             $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
+            $game->activeNextPlayer();
+        }
+        $game->giveExtraTime($st['currentPlayerId']);
 
         $this->bga->globals->set('state', json_encode($st));
 
@@ -519,10 +535,14 @@ class GameOn extends GameState
 
         $st['suitDemand'] = $suit;
 
-        if ($st['reverse'] > 0)
+        if ($st['reverse'] > 0) {
             $st['currentPlayerId'] = $this->prevPlayerId($currentPlayerId);
-        else
+            $game->activePreviousPlayer();
+        } else {
             $st['currentPlayerId'] = $this->nextPlayerId($currentPlayerId);
+            $game->activeNextPlayer();
+        }
+        $game->giveExtraTime($st['currentPlayerId']);
 
         $this->bga->globals->set('state', json_encode($st));
 
@@ -570,7 +590,7 @@ class GameOn extends GameState
                 $onPlayerId => [
                     'cards' => $drawnCards
                 ]
-            ];            
+            ];
 
             $st['onPlayerName'] = $this->game->getPlayerNameById($onPlayerId);
             $message = '${playerName} called makau on ${onPlayerName}, who draws 5.';
