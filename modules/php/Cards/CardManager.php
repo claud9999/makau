@@ -41,7 +41,7 @@ class CardManager
         $this->reset();
 
         foreach ($player_ids as $player_id)
-            $cards->pickItems(5, 'deck', ['hand', (int)$player_id])->values();
+            $cards->pickItems(10, 'deck', ['hand', (int)$player_id])->values();
 
         $discard = $cards->pickItem('deck', 'discard');
         // keep adding to discard until we find a non-action card
