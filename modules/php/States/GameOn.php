@@ -255,7 +255,7 @@ class GameOn extends GameState
                     if (
                         $firstCard->rank != Game::QUEEN
                         && $card->suit != $firstCard->suit
-                        && $card->rank != $firstCard->rank
+                        && abs($card->rank - $firstCard->rank) > 1
                     ) return $game->err($currentPlayerId, 'Cards must be in sequence or the same rank.');
                     $firstCard = $card;
                 }
@@ -496,7 +496,114 @@ class GameOn extends GameState
 
     public function zombie(int $playerId)
     {
-        throw new UserException("Not implemented: zombie for player {$playerId}");
+        $game = $this->game;
+        $cards = $game->cards;
+        $discards = $cards->getItemsInLocation('discard');
+        $top = $discards->last();
+
+        $handCards = $cards->getItemsInLocation(['hand', $playerId]);
+
+        $st = json_decode($this->bga->globals->get('state'), true);
+
+        if ($st["skip{$playerId}"] > 0) return $this->actPass($playerId);
+
+        $jokerRank = 0;
+        $jokerSuit = 0;
+
+        // compute which cards can be played
+        $playableCards = [];
+        switch ($st['demand']) {
+            case Game::NO_DEMAND:
+                $jokerRank = 4;
+                $jokerSuit = $top->suit;
+
+                foreach ($handCards as $card) {
+                    if (
+                        $top->rank == $Game::QUEEN
+                        || $card->rank == $Game::ACE
+                        || $card->rank == $Game::QUEEN
+                        || $card->rank == $Game::JOKER
+                        || $card->suit == $top->suit && (
+                            $card->rank > 4 && $card->rank < 11
+                            && abs($card->rank - $top->rank) < 2
+                        )
+                        || $card->rank == $top->rank
+                    )
+                        $playableCards[] = $card;
+                }
+                break;
+            case Game::DRAW_DEMAND:
+                $jokerRank = 2;
+                $jokerSuit = $top->suit;
+
+                foreach ($handCards as $card) {
+                    if (
+                        $card->rank == 2
+                        || $card->rank == 3
+                        || $card->rank == Game::KING && (
+                            $card->suit < 3
+                            || $st['kingDemand'] != 0
+                        )
+                    ) $playableCards[] = $card;
+                }
+                break;
+            case Game::SKIP_DEMAND:
+                foreach ($handCards as $card) {
+                    $jokerRank = 4;
+                    $jokerSuit = $top->suit;
+
+                    if (
+                        $card->rank == 4
+                    ) $playableCards[] = $card;
+                }
+                break;
+            case Game::RANK_DEMAND:
+                $jokerRank = $st['demandArg'];
+                $jokerSuit = $top->suit;
+
+                foreach ($handCards as $card) {
+                    if ($card->rank == Game::JOKER) {
+                        $card->rank = Game::JACK;
+                        $card->suit = Game::HEART;
+                        $playableCards[] = $card;
+                    } else if (
+                        $card->rank == $st['demandArg']
+                    ) $playableCards[] = $card;
+                }
+                break;
+            case Game::SUIT_DEMAND:
+                $jokerRank = rand(5, 10);
+                $jokerSuit = $st['demandArg'];
+
+                foreach ($handCards as $card) {
+                    if (
+                        $card->suit == $st['demandArg']
+                        && $card->rank > 4 && $card->rank < 11
+                    ) $playableCards[] = $card;
+                }
+                break;
+        }
+
+        if (count($playableCards) < 1) {
+            // draw, if I can.
+            if ($st['drew'] == 0) {
+                $drawResult = $this->actDraw($playerId);
+                if ($drawResult != null) return $drawResult;
+                return $this->zombie($playerId);
+            }
+
+            return $this->actPass($playerId);
+        }
+
+        $card = array_rand($playableCards);
+        if ($card->rank == Game::JOKER) {
+            $jokers = [
+                $card->id => ['rank' => $jokerRank, 'suit' => $jokerSuit]
+            ];
+        }
+        $jokers = [];
+
+        return $this->actPlay([$card], $jokers, $playerId);
     }
 
     function getDrawCards($cards): array

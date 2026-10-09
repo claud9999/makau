@@ -23,7 +23,7 @@ class Game extends \Bga\GameFramework\Table
     const CLUB = 3;
     const DIAMOND = 4;
     const ANY_SUIT = 20;
-    
+
     const ACE = 1;
     const JACK = 11;
     const QUEEN = 12;
@@ -175,11 +175,11 @@ class Game extends \Bga\GameFramework\Table
     public function getGameProgression()
     {
         $highest = 0;
-        $st = $this->st;
+        $st = json_decode($this->bga->globals->get('state'), true);
         for ($i = 0; $i < count($st['playerIds']); $i++) {
             $playerId = $st['playerIds'][$i];
             $playerScore = $this->bga->playerScore;
-            if ($playerScore->get() > $highest)
+            if ($playerScore->get($playerId) > $highest)
                 $highest = $playerScore->get($playerId) > $highest;
         }
 
