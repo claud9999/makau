@@ -11,6 +11,7 @@ use Bga\Games\makaucloudnein\States\PrevPlayer;
 use Bga\Games\makaucloudnein\Game;
 use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\PossibleAction;
+use Bga\GameFramework\Actions\CheckAction;
 use Bga\GameFramework\States\GameState;
 use Bga\GameFramework\UserException;
 use Bga\GameFramework\Actions\Types\IntArrayParam;
@@ -521,7 +522,7 @@ class GameOn extends GameState
     }
 
 
-    #[PossibleAction]
+    #[CheckAction(false)]
     public function actMakau(int $onPlayerId, int $currentPlayerId)
     {
         $game = $this->game;
