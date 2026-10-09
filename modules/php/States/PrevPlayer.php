@@ -24,7 +24,8 @@ class PrevPlayer extends GameState
 
     public function onEnteringState()
     {
-        $this->game->activePrevPlayer();
+        $playerId = $this->game->activePrevPlayer();
+        $this->game->giveExtraTime($playerId);
 
         return GameOn::class;
     }

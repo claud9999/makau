@@ -24,7 +24,8 @@ class NextPlayer extends GameState
 
     public function onEnteringState()
     {
-        $this->game->activeNextPlayer();
+        $playerId = $this->game->activeNextPlayer();
+        $this->game->giveExtraTime($playerId);
 
         return GameOn::class;
     }
