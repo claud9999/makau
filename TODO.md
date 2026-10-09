@@ -5,9 +5,8 @@
 * game metadata (banner, rules, etc.)
 * better animations (Joker->card)
 * clearer messages indicating what's happening
-* figure out how to handle "realtime" with setAllPlayersMultiactive()
+* zombie()
 * i18n
-* consider unifying "demands" into a couple state variables
 * setPlayOptions (and others) are called multiple times for no reason, remove redundancies
 * is zombie() called when setAllPlayersMultiactive()?
 * https://en.doc.boardgamearena.com/BGA_Studio_Guidelines

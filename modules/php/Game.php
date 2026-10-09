@@ -12,6 +12,25 @@ class Game extends \Bga\GameFramework\Table
     public array $cardTypes;
     public array $st;
 
+    const NO_DEMAND = 0;
+    const DRAW_DEMAND = 1;
+    const SKIP_DEMAND = 2;
+    const RANK_DEMAND = 3;
+    const SUIT_DEMAND = 4;
+
+    const SPADE = 1;
+    const HEART = 2;
+    const CLUB = 3;
+    const DIAMOND = 4;
+    const ANY_SUIT = 20;
+    
+    const ACE = 1;
+    const JACK = 11;
+    const QUEEN = 12;
+    const KING = 13;
+    const JOKER = 14;
+    const ANY_RANK = 20;
+
     public function __construct()
     {
         parent::__construct();
@@ -21,21 +40,21 @@ class Game extends \Bga\GameFramework\Table
 
         $this->cardTypes = [
             "suit" => [
-                1 => [
+                self::SPADE => [
                     'name' => clienttranslate('Spade')
                 ],
-                2 => [
+                self::HEART => [
                     'name' => clienttranslate('Heart')
                 ],
-                3 => [
+                self::CLUB => [
                     'name' => clienttranslate('Club')
                 ],
-                4 => [
+                self::DIAMOND => [
                     'name' => clienttranslate('Diamond')
                 ]
             ],
             "rank" => [
-                1 => ['name' => clienttranslate('Ace')],
+                self::ACE => ['name' => clienttranslate('Ace')],
                 2 => ['name' => clienttranslate('Two')],
                 3 => ['name' => clienttranslate('Three')],
                 4 => ['name' => clienttranslate('Four')],
@@ -45,10 +64,10 @@ class Game extends \Bga\GameFramework\Table
                 8 => ['name' => clienttranslate('Eight')],
                 9 => ['name' => clienttranslate('Nine')],
                 10 => ['name' => clienttranslate('Ten')],
-                11 => ['name' => clienttranslate('Jack')],
-                12 => ['name' => clienttranslate('Queen')],
-                13 => ['name' => clienttranslate('King')],
-                14 => ['name' => clienttranslate('Joker')]
+                self::JACK => ['name' => clienttranslate('Jack')],
+                self::QUEEN => ['name' => clienttranslate('Queen')],
+                self::KING => ['name' => clienttranslate('King')],
+                self::JOKER => ['name' => clienttranslate('Joker')]
             ]
         ];
     }
@@ -85,7 +104,7 @@ class Game extends \Bga\GameFramework\Table
         // reset jokers
         foreach ($cards->getAllItems()->values() as $card) {
             if ($card->joker == 1) {
-                $card->rank = 14;
+                $card->rank = self::JOKER;
                 $card->suit = 0;
                 $cards->updateItem($card, ['rank', 'suit']);
             }
@@ -98,12 +117,10 @@ class Game extends \Bga\GameFramework\Table
             'currentPlayerId' => $currentPlayerId,
         ];
 
-        $st['draw'] = 0;
-        $st['skip'] = 0;
+        $st['demand'] = Game::NO_DEMAND;
+        $st['demandArg'] = 0;
         $st['rankPick'] = 0;
         $st['suitPick'] = 0;
-        $st['rankDemand'] = 0;
-        $st['suitDemand'] = 0;
         $st['lastJack'] = 0;
         $st['battleKing'] = 0;
         $st['drew'] = 0;

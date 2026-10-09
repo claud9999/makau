@@ -16,6 +16,13 @@ class GameOn {
     }
 }
 
+// definitely needs to be the same as defined in Game.php
+const NO_DEMAND = 0, DRAW_DEMAND = 1, SKIP_DEMAND = 2, RANK_DEMAND = 3, SUIT_DEMAND = 4;
+
+const SPADE = 1, HEART = 2, CLUB = 3, DIAMOND = 4, ANY_SUIT = 20;
+
+const ACE = 1, JACK = 11, QUEEN = 12, KING = 13, JOKER = 14, ANY_RANK = 20;
+
 export class Game {
     constructor(bga) {
         this.bga = bga;
@@ -25,7 +32,7 @@ export class Game {
         this.bga.states.logger = console.log;
 
         this.cardTypes = {
-            "suit": {
+            "suit": { // TODO: use consts
                 1: "Spade",
                 2: "Heart",
                 3: "Club",
@@ -70,32 +77,32 @@ export class Game {
             case 4:
                 r += ' (skip next player)';
                 break;
-            case 11: // J
+            case JACK:
                 r += ' (demand non-action rank of other players)';
                 break;
-            case 12: // Q
+            case QUEEN:
                 r += ' (anything on Q, Q on anything)';
                 break;
-            case 13: // K
+            case KING:
                 switch (card.suit) {
-                    case 1: // S
+                    case SPADE:
                         r += ' (previous player draws 5)';
                         break;
-                    case 2: // H
+                    case HEART:
                         r += ' (next player draws 5)';
                         break;
-                    case 3: // C
+                    case CLUB:
                         r += ' (blocks K)';
                         break;
-                    case 4: // D
+                    case DIAMOND:
                         r += ' (blocks K)';
                         break;
                 }
                 break;
-            case 1:
+            case ACE:
                 r += ' (wild, demand next player play suit)';
                 break;
-            case 14:
+            case JOKER:
                 r += ' (can be played as any card at any time)';
                 break;
         }
@@ -176,7 +183,7 @@ export class Game {
                 div.dataset.rank = card.rank; // value 1..14
 
                 let cardfn = `${card.rank}-${card.suit}.png`;
-                if (card.rank == 14) cardfn = 'joker.png';
+                if (card.rank == JOKER) cardfn = 'joker.png';
                 div.style.backgroundImage = `url('${this.bga.images.getImgUrl(cardfn)}')`;
 
                 this.bga.gameui.addTooltipHtml(div.id, this.tooltip(card));
@@ -246,7 +253,7 @@ export class Game {
             document.getElementById("discard"),
             {
                 fanShaped: false,
-                cardOverlap: 90
+                cardOverlap: 75
             }
         );
 
@@ -254,7 +261,7 @@ export class Game {
 
         this.hand.onCardClick = (card) => {
             if (args.gamestate.name != "GameOn") this.hand.unselectAll();
-            if (card.rank == 14)
+            if (card.rank == JOKER)
                 this.jokerRank(card);
             else {
                 this.play.addCard(card);
@@ -264,7 +271,7 @@ export class Game {
 
         this.play.onCardClick = (card) => {
             if (this.jokers[card.id]) {
-                card.rank = 14;
+                card.rank = JOKER;
                 card.suit = 0;
             }
 
@@ -312,18 +319,24 @@ export class Game {
         // Handle joker rank logic
         let statusBar = this.bga.statusBar;
         let st = this.st;
-        let allowed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+        let allowed = [ACE, 2, 3, 4, 5, 6, 7, 8, 9, 10, JACK, QUEEN, KING];
 
         statusBar.removeActionButtons();
 
-        if (st.skip > 0)
-            allowed = [4];
-        else if (st.draw > 0)
-            allowed = [2, 3, 13];
-        else if (st.rankDemand > 0)
-            allowed = [st.rankDemand, 11];
-        else if (st.suitDemand > 0)
-            allowed = [5, 6, 7, 8, 9, 10];
+        switch (st.demand) {
+            case SKIP_DEMAND:
+                allowed = [4];
+                break;
+            case DRAW_DEMAND:
+                allowed = [2, 3, KING];
+                break;
+            case RANK_DEMAND:
+                allowed = [st.demandArg, JACK];
+                break;
+            case SUIT_DEMAND:
+                allowed = [5, 6, 7, 8, 9, 10];
+                break;
+        }
 
         statusBar.setTitle('Select a rank.');
         this.rankButtons = [];
@@ -337,12 +350,12 @@ export class Game {
     jokerSuit(card, rank) {
         // Handle joker suit selection logic
         let statusBar = this.bga.statusBar;
-        let allowed = [1, 2, 3, 4];
+        let allowed = [SPADE, HEART, CLUB, DIAMOND];
         let st = this.st;
 
         statusBar.removeActionButtons();
 
-        if (st.suitDemand > 0) allowed = [st.suitDemand];
+        if (st.demand == SUIT_DEMAND) allowed = [st.demandArg];
 
         statusBar.setTitle('Select a suit.');
         this.suitButtons = [];
@@ -437,9 +450,9 @@ export class Game {
             {
                 'onPlayerId': onPlayerId,
             }, {
-                checkAction: false,
-                checkPossibleAction: true,
-            }
+            checkAction: false,
+            checkPossibleAction: true,
+        }
         );
     }
 
@@ -482,163 +495,146 @@ export class Game {
             return;
         }
 
-        if (st.skip > 0) {
-            ////////////////////// skip demand
-            for (let i = 0; i < handCards.length; i++) {
-                let card = handCards[i];
-                if (card.rank == 4 || card.rank == 14) playableCards.push(card);
-            }
+        if (st.rankPick) return this.pickRank();
+        if (st.suitPick) return this.pickSuit();
 
-            if (playCards.length > 0) {
-                statusBar.setTitle('Click play when ready.');
+        switch (st.demand) {
+            case SKIP_DEMAND:
+                for (let i = 0; i < handCards.length; i++) {
+                    let card = handCards[i];
+                    if (card.rank == 4 || card.rank == JOKER) playableCards.push(card);
+                }
+
+                if (playCards.length > 0) {
+                    statusBar.setTitle('Click play when ready.');
+                    hand.setSelectionMode('single', playableCards);
+                    this.enablePlay();
+                    return;
+                }
+
+                for (let i = 0; i < handCards.length; i++) {
+                    let card = handCards[i];
+                    if (card.rank == 4) playableCards.push(card);
+                }
+
+                if (playableCards.length > 0) {
+                    statusBar.setTitle(_('Add to the skip.'));
+                } else {
+                    statusBar.setTitle(_('You have to pass.'));
+                }
+                this.enablePass();
                 hand.setSelectionMode('single', playableCards);
-                this.enablePlay();
                 return;
-            }
+            case DRAW_DEMAND:
+                for (let i = 0; i < handCards.length; i++) {
+                    let card = handCards[i];
+                    if (
+                        card.rank == 2
+                        || card.rank == 3
+                        || card.rank == KING &&
+                        (
+                            st.battleKing > 0
+                            || card.rank == SPADE
+                            || card.rank == HEART
+                        )
+                        || card.rank == JOKER
+                    ) playableCards.push(card);
+                }
 
-            for (let i = 0; i < handCards.length; i++) {
-                let card = handCards[i];
-                if (card.rank == 4) playableCards.push(card);
-            }
+                if (playCards.length > 0) {
+                    statusBar.setTitle('Click play when ready.');
+                    hand.setSelectionMode('single', playableCards);
+                    this.enablePlay();
+                    return;
+                }
 
-            if (playableCards.length > 0) {
-                statusBar.setTitle(_('Add to the skip.'));
-            } else {
-                statusBar.setTitle(_('You have to pass.'));
-            }
-            this.enablePass();
-            hand.setSelectionMode('single', playableCards);
-            return;
-        }
-
-        if (st.draw > 0) {
-            ////////////////////// draw demand
-
-            for (let i = 0; i < handCards.length; i++) {
-                let card = handCards[i];
-                if (
-                    card.rank == 2
-                    || card.rank == 3
-                    || card.rank == 13
-                    && (
-                        st.battleKing > 0
-                        || card.suit < 3
-                    )
-                    || card.rank == 14
-                ) playableCards.push(card);
-            }
-
-            if (playCards.length > 0) {
-                statusBar.setTitle('Click play when ready.');
-                hand.setSelectionMode('single', playableCards);
-                this.enablePlay();
+                if (playableCards.length > 0) {
+                    statusBar.setTitle('You may add to the draw.')
+                    hand.setSelectionMode('single', playableCards);
+                } else {
+                    statusBar.setTitle('You must draw.');
+                }
+                this.enableDraw();
                 return;
-            }
+            case RANK_DEMAND:
+                if (playCards.length > 0) {
+                    statusBar.setTitle('Click play when ready.');
+                    hand.setSelectionMode('single', playableCards);
+                    this.enablePlay();
+                    return;
+                }
 
-            if (playableCards.length > 0) {
-                statusBar.setTitle('You may add to the draw.')
+                for (let i = 0; i < handCards.length; i++) {
+                    let card = handCards[i];
+                    if (
+                        card.rank == st.demandArg
+                        || st.demandArg == ANY_RANK && card.rank > 4 && card.rank < 11
+                        || card.rank == JACK
+                        || card.rank == JOKER
+                    ) playableCards.push(card);
+                }
+
+                if (playableCards.length > 0) {
+                    statusBar.setTitle(_('Select cards to play.'));
+                } else {
+                    statusBar.setTitle(_('You have to pass.'));
+                }
+                this.enablePass();
                 hand.setSelectionMode('single', playableCards);
-            } else {
-                statusBar.setTitle('You must draw.');
-            }
-            this.enableDraw();
-            return;
-        }
-
-        if (st.rankPick > 0) {
-            ////////////////////// pick rank
-            return this.pickRank();
-        }
-
-        if (st.suitPick > 0) {
-            ////////////////////// pick suit
-            return this.pickSuit();
-        }
-
-        if (st.rankDemand > 0) {
-            ////////////////////// rank demand
-            if (playCards.length > 0) {
-                statusBar.setTitle('Click play when ready.');
-                hand.setSelectionMode('single', playableCards);
-                this.enablePlay();
                 return;
-            }
+            case SUIT_DEMAND:
+                for (let i = 0; i < handCards.length; i++) {
+                    let card = handCards[i];
+                    if (
+                        card.rank > 4 && card.rank < 11
+                        && card.suit == st.demandArg
+                        || card.rank == JOKER
+                    ) playableCards.push(card);
+                }
 
-            for (let i = 0; i < handCards.length; i++) {
-                let card = handCards[i];
-                if (
-                    card.rank == st.rankDemand
-                    || st.rankDemand == 20 && card.rank > 4 && card.rank < 11
-                    || card.rank == 11
-                    || card.rank == 14
-                ) playableCards.push(card);
-            }
+                if (playCards.length > 0) {
+                    statusBar.setTitle('Click play when ready.');
+                    hand.setSelectionMode('single', playableCards);
+                    this.enablePlay();
+                    return;
+                }
 
-            if (playableCards.length > 0) {
-                statusBar.setTitle(_('Select cards to play.'));
-            } else {
-                statusBar.setTitle(_('You have to pass.'));
-            }
-            this.enablePass();
-            hand.setSelectionMode('single', playableCards);
-            return;
-        }
-
-        if (st.suitDemand > 0) {
-            ////////////////////// suit demand
-            for (let i = 0; i < handCards.length; i++) {
-                let card = handCards[i];
-                if (
-                    card.rank > 4 && card.rank < 11
-                    && card.suit == st.suitDemand
-                    || card.rank == 14
-                ) playableCards.push(card);
-            }
-
-            if (playCards.length > 0) {
-                statusBar.setTitle('Click play when ready.');
+                if (playableCards.length > 0) {
+                    statusBar.setTitle(_('Select cards to play.'));
+                } else {
+                    statusBar.setTitle(_('You have to pass.'));
+                }
+                this.enablePass();
                 hand.setSelectionMode('single', playableCards);
-                this.enablePlay();
                 return;
-            }
-
-            if (playableCards.length > 0) {
-                statusBar.setTitle(_('Select cards to play.'));
-            } else {
-                statusBar.setTitle(_('You have to pass.'));
-            }
-            this.enablePass();
-            hand.setSelectionMode('single', playableCards);
-            return;
         }
 
         ////////////////////// no demands
-
-        let demand = '';
-        let newdemand = '';
+        let demand = NO_DEMAND;
+        let newdemand = NO_DEMAND;
         for (let i = 0; i < playCards.length; i++) {
             let card = playCards[i];
 
             switch (card.rank) {
                 case 2:
                 case 3:
-                    newdemand = 'draw';
+                    newdemand = DRAW_DEMAND;
                     break;
                 case 4:
-                    newdemand = 'skip';
+                    newdemand = SKIP_DEMAND;
                     break;
                 case 11:
-                    newdemand = 'rank';
+                    newdemand = RANK_DEMAND;
                     break;
                 case 13:
-                    if (card.suit < 3) newdemand = 'draw';
+                    if (card.suit < 3) newdemand = DRAW_DEMAND;
                     break;
                 case 1:
-                    newdemand = 'suit';
+                    newdemand = SUIT_DEMAND;
                     break;
             }
 
-            if (demand != '' && newdemand != demand) {
+            if (demand != NO_DEMAND && newdemand != demand) {
                 statusBar.setTitle(_('You can\'t have multiple demands.'));
                 return;
             }
@@ -653,40 +649,40 @@ export class Game {
         for (let i = 0; i < handCards.length; i++) {
             let card = handCards[i];
 
-            if (demand != '') {
+            if (demand != NO_DEMAND) {
                 switch (card.rank) {
                     case 2:
                     case 3:
-                        if (demand != 'draw') continue;
+                        if (demand != DRAW_DEMAND) continue;
                         break;
                     case 4:
-                        if (demand != 'skip') continue;
+                        if (demand != SKIP_DEMAND) continue;
                         break;
-                    case 11:
-                        if (demand != 'rank') continue;
+                    case JACK:
+                        if (demand != RANK_DEMAND) continue;
                         break;
-                    case 13:
-                        if (card.suit < 3 && demand != 'draw') continue;
+                    case KING:
+                        if (card.suit < 3 && demand != DRAW_DEMAND) continue;
                         break;
-                    case 1:
-                        if (demand != 'suit') continue;
+                    case ACE:
+                        if (demand != SUIT_DEMAND) continue;
                         break;
                 }
             }
 
             if (
-                demand == 'draw' && (
+                demand == DRAW_DEMAND && (
                     card.rank == 2
                     || card.rank == 3
-                    || card.rank == 13 && st.battleKing > 0
+                    || card.rank == KING && st.battleKing > 0
                 ) // playing multiple draws
-                || demand == 'skip' && card.rank == 4 // playing multiple skips
-                || card.rank == 1 // ace
-                || card.rank == 12 // queen
+                || demand == SKIP_DEMAND && card.rank == 4 // playing multiple skips
+                || card.rank == ACE
+                || card.rank == QUEEN
                 || card.suit == top.suit
                 || card.rank == top.rank
-                || top.rank == 12 // queen
-                || card.rank == 14 // joker
+                || card.rank == JOKER
+                || top.rank == QUEEN
             ) playableCards.push(card);
         }
 
@@ -748,7 +744,7 @@ export class Game {
             this.rankButtons[11] = this.bga.statusBar.addActionButton(_('any'), () => {
                 this.bga.actions.performAction(
                     'actPickRank', {
-                    rank: 20,
+                    rank: ANY_RANK,
                 });
             });
         } else {
@@ -787,7 +783,7 @@ export class Game {
             this.suitButtons[5] = statusBar.addActionButton(_('any'), () => {
                 this.bga.actions.performAction(
                     'actPickSuit', {
-                    suit: 20
+                    suit: ANY_SUIT
                 });
             });
         }
@@ -800,17 +796,7 @@ export class Game {
     }
 
     async notif_Pass(args) {
-        let st = this.st;
         this.stateUpdate(args);
-
-        st.suitDemand = 0;
-        let currentPlayerId = this.bga.players.getCurrentPlayerId();
-
-        //carry skips forward
-        st[`skip${currentPlayerId}`] = args.skip;
-
-        st.skip = 0;
-        st.draw = 0;
 
         this.setPlayOptions();
     }
@@ -835,8 +821,6 @@ export class Game {
     }
 
     async notif_PlayCards(args) {
-        let st = this.st;
-
         this.stateUpdate(args);
 
         await this.discard.addCards(Array.from(Object.values(args.cards)));
@@ -848,7 +832,7 @@ export class Game {
 
     async notif_NewHand(args) {
         let st = this.st;
-
+        
         this.deck.setCardNumber(args.deck);
 
         await this.discard.removeAll();

@@ -44,6 +44,7 @@ class CardManager
             $cards->pickItems(5, 'deck', ['hand', (int)$player_id])->values();
 
         $discard = $cards->pickItem('deck', 'discard');
+        // keep adding to discard until we find a non-action card
         while ($discard->rank < 5 || $discard->rank > 10)
             $discard = $cards->pickItem('deck', 'discard');
     }
@@ -51,7 +52,7 @@ class CardManager
     public function setup()
     {
         $cards = [];
-        foreach ([1, 2, 3, 4] as $suit) {
+        foreach ([Game::SPADE, Game::HEART, Game::CLUB, Game::DIAMOND] as $suit) {
             foreach (range(1, 13) as $rank) {
                 $cards[] = [
                     'location' => 'deck',
@@ -64,13 +65,13 @@ class CardManager
         $cards[] = [
             'location' => 'deck',
             'suit' => 0,
-            'rank' => 14,
+            'rank' => Game::JOKER,
             'joker' => 1
         ];
         $cards[] = [
             'location' => 'deck',
             'suit' => 0,
-            'rank' => 14,
+            'rank' => Game::JOKER,
             'joker' => 1
         ];
         $this->cards->createItems($cards);
