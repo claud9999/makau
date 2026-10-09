@@ -103,7 +103,7 @@ export class Game {
                 r += ' (wild, demand next player play suit)';
                 break;
             case JOKER:
-                r += ' (can be played as any card at any time)';
+                r = 'Joker (can be played as any card at any time)';
                 break;
         }
 

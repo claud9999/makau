@@ -362,9 +362,11 @@ class GameOn extends GameState
             switch ($card->rank) {
                 case 2:
                 case 3:
+                    $st['demand'] = GAME::DRAW_DEMAND;
                     $st['demandArg'] += $card->rank;
                     break;
                 case 4:
+                    $st['demand'] = GAME::SKIP_DEMAND;
                     $st['demandArg']++;
                     break;
                 case Game::JACK:
@@ -377,6 +379,7 @@ class GameOn extends GameState
                             $st['reverse'] = 1;
                         case Game::HEART: // KH draw 5
                             $st['battleKing'] = 5;
+                            $st['demand'] = GAME::DRAW_DEMAND;
                             $st['demandArg'] += 5;
                             break;
                         case 3:
@@ -488,6 +491,7 @@ class GameOn extends GameState
         if ($st['rankPick'] != $currentPlayerId) return null;
 
         $st['rankPick'] = 0;
+        $st['demand'] = GAME::RANK_DEMAND;
         $st['demandArg'] = $rank;
         $st['lastJack'] = $currentPlayerId;
 
@@ -514,6 +518,7 @@ class GameOn extends GameState
         if ($st['suitPick'] != $currentPlayerId) return null;
 
         $st['suitPick'] = 0;
+        $st['demand'] = GAME::SUIT_DEMAND;
         $st['demandArg'] = $suit;
 
         $this->bga->globals->set('state', json_encode($st));
