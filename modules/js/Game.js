@@ -564,16 +564,29 @@ export class Game {
 
                 for (let i = 0; i < handCards.length; i++) {
                     let card = handCards[i];
+
+                    // no demand cards!
+                    if (playCards.length > 0
+                        && (card.rank == 2
+                            || card.rank == 3
+                            || card.rank == 4
+                            || card.rank == ACE
+                            || card.rank == JACK
+                            || card.rank == KING && (
+                                card.suit == SPADE
+                                || card.suit == HEART
+                            )
+                        )
+                    ) continue;
+
                     if (
                         top.rank == QUEEN
-                        || card.rank == ACE && playCards.length < 1
+                        || card.rank == top.rank
                         || card.rank == QUEEN
                         || card.rank == JOKER
                         || card.suit == top.suit && (
-                            playCards.length < 1
-                            || card.rank > 4 && card.rank < 11 && Math.abs(card.rank - top.rank) < 2
+                            playCards.length == 0 || Math.abs(card.rank - top.rank) < 2
                         )
-                        || card.rank == top.rank
                     ) playableCards.push(card);
                 }
         }
@@ -586,8 +599,20 @@ export class Game {
             return;
         }
 
-        if (playableCards.length < 1) statusBar.setTitle(_('You have no playable cards.'));
-        else statusBar.setTitle(_('Pick cards to play.'));
+        if (playableCards.length < 1) {
+            switch (st.demand) {
+                case DRAW_DEMAND:
+                    this.enableDraw();
+                    statusBar.setTitle(_('You must draw.'));
+                    return;
+                case SKIP_DEMAND:
+                    this.enablePass();
+                    statusBar.setTitle(_('You must pass.'));
+                    return;
+            }
+
+            statusBar.setTitle(_('You have no playable cards.'));
+        } else statusBar.setTitle(_('Pick cards to play.'));
 
         if (!st.drew && demand == '') this.enableDraw();
         else this.enablePass();

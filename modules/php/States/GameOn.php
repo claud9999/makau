@@ -55,7 +55,7 @@ class GameOn extends GameState
             $game,
             id: 31,
             type: StateType::ACTIVE_PLAYER,
-            descriptionMyTurn: clienttranslate('${you} may play.')
+            descriptionMyTurn: clienttranslate('...')
         );
     }
 
@@ -125,14 +125,19 @@ class GameOn extends GameState
 
         $st = json_decode($this->bga->globals->get('state'), true);
 
+        $demand = $st['demand'];
+
         if ($st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'You have to skip.');
 
-        if ($st['demand'] != Game::NO_DEMAND) return $game->err($currentPlayerId, 'You have to meet the demand or pass.');
+        if (
+            $demand != Game::NO_DEMAND
+            && $demand != Game::DRAW_DEMAND
+        )
+            return $game->err($currentPlayerId, 'You have to meet the demand or pass.');
 
         if ($st['drew'] > 0) return $game->err($currentPlayerId, 'You can only draw once.');
 
-        $forcedDraw = ($st['demand'] == Game::DRAW_DEMAND);
-        if ($forcedDraw) $draw = $st['demandArg'];
+        if ($demand == Game::DRAW_DEMAND) $draw = $st['demandArg'];
         else $draw = 1;
 
         $st['reshuffled'] = false;
@@ -158,7 +163,7 @@ class GameOn extends GameState
 
         $st['deck'] = $cards->countItemsInLocation('deck');
 
-        if ($forcedDraw) {
+        if ($demand == Game::DRAW_DEMAND) {
             $st['demand'] = Game::NO_DEMAND;
             $st['reverse'] = 0;
             $st['battleKing'] = 0;
@@ -187,7 +192,7 @@ class GameOn extends GameState
             $st,
         );
 
-        if ($forcedDraw) return NextPlayer::class;
+        if ($demand == Game::DRAW_DEMAND) return NextPlayer::class;
     }
 
     #[PossibleAction]
@@ -203,6 +208,7 @@ class GameOn extends GameState
 
         $playedCards = [];
 
+        // remap Jokers to what the player chose
         for ($i = 0; $i < count($cardIds); $i++) {
             $cardId = $cardIds[$i];
             $card = $cards->getItemById($cardId);
@@ -214,120 +220,158 @@ class GameOn extends GameState
             }
         }
 
+        $playedCount = count($playedCards);
+
         $demand = $st['demand'];
+        $demandArg = $st['demandArg'];
+        $battleKing = $st['battleKing'];
+        $lastJack = $st['lastJack'];
+        $reverse = $st['reverse'];
+        $rankPick = 0;
+        $suitPick = 0;
 
-        //////////////// check that there are, at most, one demand type
-        $firstCard = $playedCards[0];
-        $playedCardsCount = count($playedCards);
-        switch ($firstCard->rank) {
-            case Game::ACE:
-                if ($playedCardsCount > 1) return $game->err($currentPlayerId, 'You can only play one Ace.');
-                if ($demand != Game::NO_DEMAND) return $game->err($currentPlayerId, 'You cannot play Ace when there is a demand.');
-                $demand = Game::SUIT_DEMAND;
-                break;
-            case Game::JACK:
-                if ($playedCardsCount > 1) return $game->err($currentPlayerId, 'You can only play one Jack.');
-                if ($demand != Game::NO_DEMAND) return $game->err($currentPlayerId, 'You cannot play Jack when there is a demand.');
-                $demand = Game::RANK_DEMAND;
-                break;
-            case Game::KING:
-                if ($st['battleKing'] == 0 && $firstCard->suit < 3) return $game->err($currentPlayerId, 'You cannot play a non-draw King.');
-            case 2:
-            case 3:
-                if ($demand != Game::NO_DEMAND && $demand != Game::DRAW_DEMAND) return $game->err($currentPlayerId, 'You cannot play a draw card when there is a demand.');
-                for ($i = 1; $i < $playedCardsCount; $i++) {
-                    $card = $playedCards[$i];
-                    if ($card->rank != 2 && $card->rank != 3 && $card->rank != Game::KING) return $game->err($currentPlayerId, 'Can only play draw cards.');
-                }
-                $demand = Game::DRAW_DEMAND;
-                break;
-            case 4:
-                if ($demand != Game::NO_DEMAND && $demand != Game::SKIP_DEMAND) return $game->err($currentPlayerId, 'You cannot play a skip card when there is a demand.');
-                for ($i = 1; $i < $playedCardsCount; $i++) {
-                    $card = $playedCards[$i];
-                    if ($card->rank != 4) return $game->err($currentPlayerId, 'Can only play skip cards.');
-                }
-                $demand = Game::SKIP_DEMAND;
-                break;
-            default:
-                for ($i = 1; $i < $playedCardsCount; $i++) {
-                    $card = $playedCards[$i];
-                    if (
-                        $firstCard->rank != Game::QUEEN
-                        && $card->suit != $firstCard->suit
-                        && abs($card->rank - $firstCard->rank) > 1
-                    ) return $game->err($currentPlayerId, 'Cards must be in sequence or the same rank.');
-                    $firstCard = $card;
-                }
-        }
-
-        //////////// valid play, enact
-
-        if ($st['lastJack'] == $currentPlayerId) {
-            // clear previous Jack demand
-            $st['lastJack'] = 0;
-            $st['demandArg'] = 0;
-        }
-
-        $st['demand'] = $demand;
-
-        for ($i = 0; $i < count($playedCards); $i++) {
-            $card = $playedCards[$i];
+        if ($demand == Game::NO_DEMAND) {
+            // compute new demand based on what's being played
+            $card = $playedCards[0];
             switch ($card->rank) {
                 case Game::ACE:
-                    // A demands suit
-                    $st['suitPick'] = $currentPlayerId;
+                    if ($playedCount > 1)
+                        return $game->err($currentPlayerId, "You can only play one card when making a demand.");
+                    $suitPick = $currentPlayerId;
                     break;
                 case 2:
                 case 3:
-                    $st['demand'] = GAME::DRAW_DEMAND;
-                    $st['demandArg'] += $card->rank;
+                    $demand = Game::DRAW_DEMAND;
                     break;
                 case 4:
-                    $st['demand'] = GAME::SKIP_DEMAND;
-                    $st['demandArg']++;
+                    $demand = Game::SKIP_DEMAND;
                     break;
                 case Game::JACK:
-                    $st['rankPick'] = $currentPlayerId;
+                    $demand = Game::RANK_DEMAND;
+                    if ($playedCount > 1)
+                        return $game->err($currentPlayerId, "You can only play one card when making a demand.");
+                    $rankPick = $currentPlayerId;
                     break;
                 case Game::KING:
                     switch ($card->suit) {
-                        case Game::SPADE: // KS back draw 5
-                            $st['reverse'] = 1;
-                        case Game::HEART: // KH draw 5
-                            $st['battleKing'] = 5;
-                            $st['demand'] = GAME::DRAW_DEMAND;
-                            $st['demandArg'] += 5;
-                            break;
-                        case 3:
-                        case 4:
-                            // KD KC blocks battle kings
-                            if ($st['battleKing'] > 0) {
-                                $st['demand'] = Game::NO_DEMAND;
-                                $st['demandArg'] = 0;
-                                $st['reverse'] = 0;
-                                $st['battleKing'] = 0;
-                            }
-                            break;
+                        case Game::SPADE:
+                        case Game::HEART:
+                            $demand = Game::DRAW_DEMAND;
                     }
-                    break;
             }
         }
-        // move the cards to the discard pile
-        // one at a time to maintain order
-        for ($i = 0; $i < count($playedCards); $i++) {
-            $cards->moveItem($playedCards[$i], 'discard');
+
+        switch ($demand) {
+            case Game::NO_DEMAND:
+                $top = $playedCards[0];
+                for ($i = 1; $i < $playedCount; $i++) {
+                    $card = $playedCards[$i];
+                    switch ($card->rank) {
+                        case 2:
+                        case 3:
+                        case 4:
+                        case Game::KING:
+                            if ($card->suit == Game::DIAMOND || $card->suit == Game::CLUB) break;
+                        case Game::JACK:
+                        case Game::ACE:
+                            return $game->err($currentPlayerId, 'You cannot play demands with non-action cards.');
+                            break;
+                    }
+                    if (
+                        $top->rank != Game::QUEEN
+                        && $card->rank != Game::QUEEN
+                        && $card->suit != $top->suit
+                        && abs($card->rank - $top->rank) > 1
+                    ) return $game->err($currentPlayerId, 'Cards must be in sequence or the same rank.');
+                    $top = $card;
+                }
+                break;
+            case Game::DRAW_DEMAND:
+                foreach ($playedCards as $card) {
+                    switch ($card->rank) {
+                        case 2:
+                            $demandArg += 2;
+                            break;
+                        case 3:
+                            $demandArg += 3;
+                            break;
+                        case Game::KING:
+                            switch ($card->suit) {
+                                case Game::SPADE:
+                                    $reverse = $currentPlayerId;
+                                    // and fall through
+                                case Game::HEART:
+                                    $demandArg += 5;
+                                    $battleKing = $currentPlayerId;
+                                    break;
+                                case Game::DIAMOND:
+                                case Game::CLUB:
+                                    // clear battle king
+                                    $battleKing = 0;
+                                    $demandArg = 0;
+                                    $demand = Game::NO_DEMAND;
+                                    break;
+                            }
+                            break;
+                        default:
+                            return $game->err($currentPlayerId, "You can only play draw cards.");
+                    }
+                }
+                break;
+            case Game::SKIP_DEMAND:
+                foreach ($playedCards as $card) {
+                    if (
+                        $card->rank != 4
+                    ) return $game->err($currentPlayerId, "You can only play skip cards.");
+                    $demandArg++;
+                }
+                break;
+            case Game::RANK_DEMAND:
+                if ($playedCount > 1)
+                    return $game->err($currentPlayerId, "You can only play one card.");
+
+                $card = $playedCards[0];
+                if ($card->rank == Game::JACK) {
+                    $rankPick = $currentPlayerId;
+                } else if ($card->rank != $demandArg)
+                    return $game->err($currentPlayerId, "You need to play the rank.");
+                else if ($currentPlayerId == $lastJack) {
+                    $lastJack = 0;
+                    $demand = 0;
+                    $demandArg = 0;
+                }
+                break;
+            case Game::SUIT_DEMAND:
+                if ($playedCount > 1)
+                    return $game->err($currentPlayerId, "You can only play one card.");
+                if (
+                    $playedCards[0]->suit != $demandArg
+                    || $playedCards[0]->rank < 5
+                    || $playedCards[0]->rank > 10
+                ) return $game->err($currentPlayerId, "You need to play the suit.");
+
+                // we've cleared demand
+                $demand = Game::NO_DEMAND;
+                $demandArg = 0;
+                break;
         }
 
-        if ($st['demand'] == Game::SUIT_DEMAND) {
-            $st['demand'] = Game::NO_DEMAND;
-            $st['demandArg'] = 0;
-        }
-
-        if ($st['battleKing'] != 0 && $st['battleKing'] != $currentPlayerId)
-            $st['battleKing'] = 0;
+        //////////// valid play, enact
+        $st['demand'] = $demand;
+        $st['demandArg'] = $demandArg;
+        $st['battleKing'] = $battleKing;
+        $st['lastJack'] = $lastJack;
+        $st['reverse'] = $reverse;
+        $st['rankPick'] = $rankPick;
+        $st['suitPick'] = $suitPick;
 
         $st['drew'] = 0;
+
+        // move the cards to the discard pile
+        // one at a time to maintain order
+        foreach ($playedCards as $card) {
+            $cards->moveItem($card, 'discard');
+        }
 
         $handCards = $cards->countItemsInLocation(['hand', $currentPlayerId]);
         if ($handCards == 0) {
@@ -388,7 +432,7 @@ class GameOn extends GameState
             $game->notify->all('PlayCards', clienttranslate($message), $st);
         }
 
-        if ($st['rankPick'] == 0 && $st['suitPick'] == 0) {
+        if ($rankPick == 0 && $suitPick == 0) {
             if ($st['reverse'] > 0) return PrevPlayer::class;
             else return NextPlayer::class;
         }
@@ -412,8 +456,8 @@ class GameOn extends GameState
 
         // vvvvvv parameters not saved but sent to the client
         $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
-        $st['rankDemandName'] = $game->cardTypes['rank'][$rank]['name'];
         if ($rank == Game::ANY_RANK) $st['rankDemandName'] = 'any rank';
+        else $st['rankDemandName'] = $game->cardTypes['rank'][$rank]['name'];
 
         $this->game->bga->notify->all('Selected', clienttranslate('${playerName} demands everyone play ${rankDemandName}.'), $st);
 
@@ -646,7 +690,7 @@ class GameOn extends GameState
         return implode(", ", array_map(fn($card) => $this->getCardName($card), $cards));
     }
 
-/*    function debug_playToEndRound() {
+    /*    function debug_playToEndRound() {
 // actually only does one move, whatev!
         foreach($this->gamestate->getActivePlayerList() as $playerId) {
             $playerId = (int)$playerId;
