@@ -231,7 +231,7 @@ class GameOn extends GameState
                 $demand = Game::RANK_DEMAND;
                 break;
             case Game::KING:
-                if ($st['kingDemand'] == 0 && $firstCard->suit < 3) return $game->err($currentPlayerId, 'You cannot play a non-draw King.');
+                if ($st['battleKing'] == 0 && $firstCard->suit < 3) return $game->err($currentPlayerId, 'You cannot play a non-draw King.');
             case 2:
             case 3:
                 if ($demand != Game::NO_DEMAND && $demand != Game::DRAW_DEMAND) return $game->err($currentPlayerId, 'You cannot play a draw card when there is a demand.');
@@ -519,10 +519,10 @@ class GameOn extends GameState
 
                 foreach ($handCards as $card) {
                     if (
-                        $top->rank == $Game::QUEEN
-                        || $card->rank == $Game::ACE
-                        || $card->rank == $Game::QUEEN
-                        || $card->rank == $Game::JOKER
+                        $top->rank == Game::QUEEN
+                        || $card->rank == Game::ACE
+                        || $card->rank == Game::QUEEN
+                        || $card->rank == Game::JOKER
                         || $card->suit == $top->suit && (
                             $card->rank > 4 && $card->rank < 11
                             && abs($card->rank - $top->rank) < 2
@@ -595,7 +595,8 @@ class GameOn extends GameState
             return $this->actPass($playerId);
         }
 
-        $card = array_rand($playableCards);
+        $card = $playableCards[array_rand($playableCards)];
+
         if ($card->rank == Game::JOKER) {
             $jokers = [
                 $card->id => ['rank' => $jokerRank, 'suit' => $jokerSuit]
@@ -603,7 +604,7 @@ class GameOn extends GameState
         }
         $jokers = [];
 
-        return $this->actPlay([$card], $jokers, $playerId);
+        return $this->actPlay([$card->id], $jokers, $playerId);
     }
 
     function getDrawCards($cards): array
@@ -644,4 +645,12 @@ class GameOn extends GameState
     {
         return implode(", ", array_map(fn($card) => $this->getCardName($card), $cards));
     }
+
+/*    function debug_playToEndRound() {
+// actually only does one move, whatev!
+        foreach($this->gamestate->getActivePlayerList() as $playerId) {
+            $playerId = (int)$playerId;
+            $this->gamestate->runStateClassZombie($this->gamestate->getCurrentState($playerId), $playerId);
+        }
+    }*/
 }
