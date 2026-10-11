@@ -183,7 +183,7 @@ export class Game {
                 div.dataset.rank = card.rank; // value 1..14
 
                 let cardfn = `${card.rank}-${card.suit}.svg`;
-                switch(card.joker) {
+                switch (card.joker) {
                     case 1: cardfn = 'joker-1.svg'; break;
                     case 2: cardfn = 'joker-2.svg'; break;
                 }
@@ -417,21 +417,26 @@ export class Game {
     updateHandSize(playerId, count) {
         let hand = this[`hand${playerId}`];
         if (hand == undefined) return;
-        if (hand.cards.length == count) return;
-
-        let toAdd = count - hand.cards.length;
-
-        if (toAdd < 0) {
-            toAdd = count;
-            hand.removeAll();
-        }
-
-        for (let j = 0; j < toAdd; j++) {
-            hand.addCard({
-                id: `player${playerId}card${j}`,
-                suit: 0,
-                rank: 0
-            });
+        let handCount = hand.cards.length;
+        
+        if (handCount > count) {
+            for (let j = handCount; j > count; j--) {
+                hand.removeCard({
+                    id: `player${playerId}card${j}`,
+                });
+            }
+        } else {
+            for (let j = handCount; j < count; j++) {
+                hand.addCard({
+                    id: `player${playerId}card${j}`,
+                }, {
+                    initialSide: 'front',
+                    finalSide: 'front',
+                    fromElement: this.deck.getElement(),
+                    duration: 10000,
+                    fadeIn: true,
+                });
+            }
         }
     }
 
@@ -731,7 +736,13 @@ export class Game {
         }
 
         if (args._private) {
-            await this.hand.addCards(Array.from(Object.values(args._private.cards)));
+            await this.hand.addCards(Array.from(Object.values(args._private.cards)), {
+                initialSide: 'front',
+                finalSide: 'front',
+                fadeIn: true,
+                duration: 1000,
+                fromElement: this.deck.getElement(),
+            });
             this.st.drew = 1;
         } else {
             this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
@@ -743,7 +754,16 @@ export class Game {
     async notif_PlayCards(args) {
         this.stateUpdate(args);
 
-        await this.discard.addCards(Array.from(Object.values(args.cards)));
+        let elt = this.hand.getElement();
+        if (args.playerId != this.playerId) elt = this[`hand${args.playerId}`].getElement();
+
+        await this.discard.addCards(Array.from(Object.values(args.cards)), {
+            initialSide: 'front',
+            finalSide: 'front',
+            fadeIn: true,
+            duration: 1000,
+            fromElement: elt,
+        });
 
         this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
 
