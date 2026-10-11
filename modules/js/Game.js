@@ -168,7 +168,7 @@ export class Game {
         });
 
         const cardWidth = 100;
-        const cardHeight = 135;
+        const cardHeight = 140;
 
         this.cardsManager = new BgaCards.Manager({
             animationManager: this.animationManager,
@@ -182,14 +182,17 @@ export class Game {
                 div.dataset.suit = card.suit; // 1..4
                 div.dataset.rank = card.rank; // value 1..14
 
-                let cardfn = `${card.rank}-${card.suit}.png`;
-                if (card.rank == JOKER) cardfn = 'joker.png';
+                let cardfn = `${card.rank}-${card.suit}.svg`;
+                switch(card.joker) {
+                    case 1: cardfn = 'joker-1.svg'; break;
+                    case 2: cardfn = 'joker-2.svg'; break;
+                }
                 div.style.backgroundImage = `url('${this.bga.images.getImgUrl(cardfn)}')`;
 
                 this.bga.gameui.addTooltipHtml(div.id, this.tooltip(card));
             },
             setupBackDiv: (card, div) => {
-                div.style.backgroundImage = `url('${this.bga.images.getImgUrl('back.png')}')`
+                div.style.backgroundImage = `url('${this.bga.images.getImgUrl('back.svg')}')`
             },
             isCardVisible: (card) => { return card.rank > 0; }
         });
