@@ -13,10 +13,8 @@ use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\PossibleAction;
 use Bga\GameFramework\Actions\CheckAction;
 use Bga\GameFramework\States\GameState;
-use Bga\GameFramework\UserException;
 use Bga\GameFramework\Actions\Types\IntArrayParam;
 use Bga\GameFramework\Actions\Types\JsonParam;
-use Bga\GameFramework\NotificationMessage;
 
 /*
   This game supports players calling "Makau" on other
