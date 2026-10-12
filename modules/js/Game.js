@@ -111,7 +111,6 @@ export class Game {
     }
 
     setup(args) {
-        console.log("Starting game setup");
         this.st = args;
         this.playerId = args.playerId;
 
@@ -174,7 +173,6 @@ export class Game {
             animationManager: this.animationManager,
             type: "ha-card",
             getId: (card) => card.id,
-
             cardWidth: cardWidth,
             cardHeight: cardHeight,
             cardBorderRadius: "5%",
@@ -383,13 +381,9 @@ export class Game {
 
     }
 
-    enablePlay() {
-        this.playButton.disabled = false;
-    }
+    enablePlay() { this.playButton.disabled = false; }
 
-    disablePlay() {
-        this.playButton.disabled = true;
-    }
+    disablePlay() { this.playButton.disabled = true; }
 
     enableDraw() {
         this.drawButton.disabled = false;
@@ -406,13 +400,9 @@ export class Game {
         this.deck.onCardClick = null;
     }
 
-    enablePass() {
-        this.passButton.disabled = false;
-    }
+    enablePass() { this.passButton.disabled = false; }
 
-    disablePass() {
-        this.passButton.disabled = true;
-    }
+    disablePass() { this.passButton.disabled = true; }
 
     updateHandSize(playerId, count) {
         let hand = this[`hand${playerId}`];

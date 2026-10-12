@@ -163,6 +163,7 @@ class GameOn extends GameState
 
         if ($demand == Game::DRAW_DEMAND) {
             $st['demand'] = Game::NO_DEMAND;
+            $st['demandArg'] = 0;
             $st['reverse'] = 0;
             $st['battleKing'] = 0;
             $st['drew'] = 0;
@@ -544,6 +545,8 @@ class GameOn extends GameState
         $discards = $cards->getItemsInLocation('discard');
         $top = $discards->last();
 
+        $game->notify->all('Debug', 'zombie');
+
         $handCards = $cards->getItemsInLocation(['hand', $playerId]);
 
         $st = json_decode($this->bga->globals->get('state'), true);
@@ -558,6 +561,8 @@ class GameOn extends GameState
         $nonActionCards = [];
         switch ($st['demand']) {
             case Game::NO_DEMAND:
+        $game->notify->all('Debug', 'no demand');
+
                 $jokerRank = 4;
                 $jokerSuit = $top->suit;
 
@@ -593,6 +598,7 @@ class GameOn extends GameState
                 }
                 break;
             case Game::DRAW_DEMAND:
+        $game->notify->all('Debug', 'draw demand');
                 $jokerRank = 2;
                 $jokerSuit = $top->suit;
 
@@ -608,10 +614,11 @@ class GameOn extends GameState
                     ) $actionCards[] = $card;
                 }
 
-                if (count($actionCards) + $count($nonActionCards) < 1)
+                if (count($actionCards) + count($nonActionCards) < 1)
                     return $this->actDraw($playerId);
                 break;
             case Game::SKIP_DEMAND:
+        $game->notify->all('Debug', 'skip demand');
                 foreach ($handCards as $card) {
                     $jokerRank = 4;
                     $jokerSuit = $top->suit;
@@ -626,6 +633,7 @@ class GameOn extends GameState
                     return $this->actPass($playerId);
                 break;
             case Game::RANK_DEMAND:
+        $game->notify->all('Debug', 'rank demand');
                 $jokerRank = $st['demandArg'];
                 $jokerSuit = $top->suit;
 
@@ -643,6 +651,7 @@ class GameOn extends GameState
                     return $this->actPass($playerId);
                 break;
             case Game::SUIT_DEMAND:
+        $game->notify->all('Debug', 'suit demand');
                 $jokerRank = rand(5, 10);
                 $jokerSuit = $st['demandArg'];
 
@@ -657,6 +666,7 @@ class GameOn extends GameState
                     return $this->actPass($playerId);
                 break;
         }
+        $game->notify->all('Debug', "implementing");
 
         if (count($actionCards) > 0) {
             $card = $actionCards[rand(0, count($actionCards) - 1)];
