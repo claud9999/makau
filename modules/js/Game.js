@@ -119,19 +119,25 @@ export class Game {
                 <div class="deckdiscardplay">
                     <div style="flex: column; width:20%;">
                         <div id="deck" class="deck"></div>
-                        <div id="drawButton"></div>
-                    </div>
-                    <div style="flex: column; width:60%">
-                        <div id="discard" class="discard"></div>
-                        <div id="passButton"></div>
                     </div>
                     <div style="flex: column; width:20%;">
                         <div id="play" class="play"></div>
-                        <div id="playButton"></div>
+                    </div>
+                    <div style="flex: column; width:60%">
+                        <div id="discard" class="discard"></div>
                     </div>
                 </div><!-- deckdiscardplay -->
 
                 <div class="players">
+                    <div style="flex: column; flex-grow: 1;">
+                        <div id="hand" class="hand"></div>
+                        <div id="buttons">
+                        <span id="drawButton"></span>
+                        <span id="playButton"></span>
+                        <span id="passButton"></span>
+                        <span id="makau${this.playerId}"></span>
+                        </div>
+                    </div>
             `;
 
         for (let i = 0; i < args.playerIds.length; i++) {
@@ -148,10 +154,6 @@ export class Game {
         }
 
         html += `
-                    <div style="flex: column; flex-grow: 1;">
-                        <div id="hand" class="hand"></div>
-                        <div align="right" id="makau${this.playerId}"></div>
-                    </div>
                 </div><!-- players -->
             </div><!-- table -->
             `;
