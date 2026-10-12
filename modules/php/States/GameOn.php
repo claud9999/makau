@@ -538,10 +538,16 @@ class GameOn extends GameState
 
     public function zombie(int $playerId)
     {
+        $globals = $this->bga->globals;
         $game = $this->game;
         $cards = $game->cards;
         $discards = $cards->getItemsInLocation('discard');
         $top = $discards->last();
+
+        $globals->set('zombie', json_encode([
+            'playerId' => $playerId,
+            'step' => 1,
+        ]));
 
         $handCards = $cards->getItemsInLocation(['hand', $playerId]);
 
@@ -552,26 +558,42 @@ class GameOn extends GameState
         $jokerRank = 0;
         $jokerSuit = 0;
 
+        $globals->set('zombie', json_encode([
+            'playerId' => $playerId,
+            'step' => 3,
+        ]));
+
         // compute which cards can be played
-        $playableCards = [];
+        $actionCards = [];
+        $nonActionCards = [];
         switch ($st['demand']) {
             case Game::NO_DEMAND:
                 $jokerRank = 4;
                 $jokerSuit = $top->suit;
 
                 foreach ($handCards as $card) {
-                    if (
-                        $top->rank == Game::QUEEN
-                        || $card->rank == Game::ACE
-                        || $card->rank == Game::QUEEN
-                        || $card->rank == Game::JOKER
-                        || $card->suit == $top->suit && (
-                            $card->rank > 4 && $card->rank < 11
-                            && abs($card->rank - $top->rank) < 2
-                        )
-                        || $card->rank == $top->rank
-                    )
-                        $playableCards[] = $card;
+                    switch ($card->rank) {
+                        case 2:
+                        case 3:
+                        case 4:
+                        case Game::JACK:
+                        case Game::KING:
+                            if ($card->suit == $top->suit)
+                                $actionCards[] = $card;
+                            break;
+                        // wilds
+                        case Game::ACE:
+                        case Game::JOKER:
+                            $actionCards[] = $card;
+                            break;
+                        default:
+                            if (
+                                $card->rank == $top->rank
+                                || $card->suit == $top->suit
+                                || $top->rank == Game::QUEEN
+                            )
+                                $nonActionCards[] = $card;
+                    }
                 }
                 break;
             case Game::DRAW_DEMAND:
@@ -586,8 +608,12 @@ class GameOn extends GameState
                             $card->suit < 3
                             || $st['kingDemand'] != 0
                         )
-                    ) $playableCards[] = $card;
+                        || $card->rank == Game::JOKER
+                    ) $actionCards[] = $card;
                 }
+
+                if (count($actionCards) + $count($nonActionCards) < 1)
+                    return $this->actDraw($playerId);
                 break;
             case Game::SKIP_DEMAND:
                 foreach ($handCards as $card) {
@@ -596,8 +622,12 @@ class GameOn extends GameState
 
                     if (
                         $card->rank == 4
-                    ) $playableCards[] = $card;
+                        || $card->rank == Game::JOKER
+                    ) $actionCards[] = $card;
                 }
+
+                if (count($actionCards) + count($nonActionCards) < 1)
+                    return $this->actPass($playerId);
                 break;
             case Game::RANK_DEMAND:
                 $jokerRank = $st['demandArg'];
@@ -607,11 +637,14 @@ class GameOn extends GameState
                     if ($card->rank == Game::JOKER) {
                         $card->rank = Game::JACK;
                         $card->suit = Game::HEART;
-                        $playableCards[] = $card;
+                        $actionCards[] = $card;
                     } else if (
                         $card->rank == $st['demandArg']
-                    ) $playableCards[] = $card;
+                    ) $nonActionCards[] = $card;
                 }
+
+                if (count($actionCards) + count($nonActionCards) < 1)
+                    return $this->actPass($playerId);
                 break;
             case Game::SUIT_DEMAND:
                 $jokerRank = rand(5, 10);
@@ -621,32 +654,36 @@ class GameOn extends GameState
                     if (
                         $card->suit == $st['demandArg']
                         && $card->rank > 4 && $card->rank < 11
-                    ) $playableCards[] = $card;
+                    ) $nonActionCards[] = $card;
                 }
+
+                if (count($actionCards) + count($nonActionCards) < 1)
+                    return $this->actPass($playerId);
                 break;
         }
 
-        if (count($playableCards) < 1) {
-            // draw, if I can.
-            if ($st['drew'] == 0) {
-                $drawResult = $this->actDraw($playerId);
-                if ($drawResult != null) return $drawResult;
-                return $this->zombie($playerId);
-            }
+        if (count($actionCards) > 0) {
+            $card = $actionCards[rand(0, count($actionCards) - 1)];
 
+            if ($card->rank == Game::JOKER) {
+                $jokers = [
+                    $card->id => ['rank' => $jokerRank, 'suit' => $jokerSuit]
+                ];
+            }
+            $jokers = [];
+
+            return $this->actPlay([$card->id], $jokers, $playerId);
+        } else if (count($nonActionCards) > 0) {
+            $card = $nonActionCards[rand(0, count($nonActionCards) - 1)];
+
+            return $this->actPlay([$card->id], [], $playerId);
+        } else if ($st['drew'] == 0) {
+            $drawResult = $this->actDraw($playerId);
+            if ($drawResult != null) return $drawResult;
+            return $this->zombie($playerId);
+        } else {
             return $this->actPass($playerId);
         }
-
-        $card = $playableCards[array_rand($playableCards)];
-
-        if ($card->rank == Game::JOKER) {
-            $jokers = [
-                $card->id => ['rank' => $jokerRank, 'suit' => $jokerSuit]
-            ];
-        }
-        $jokers = [];
-
-        return $this->actPlay([$card->id], $jokers, $playerId);
     }
 
     function getDrawCards($cards): array
@@ -688,11 +725,12 @@ class GameOn extends GameState
         return implode(", ", array_map(fn($card) => $this->getCardName($card), $cards));
     }
 
-    /*    function debug_playToEndRound() {
-// actually only does one move, whatev!
-        foreach($this->gamestate->getActivePlayerList() as $playerId) {
+    function debug_playToEndRound()
+    {
+        // actually only does one move, whatev!
+        foreach ($this->gamestate->getActivePlayerList() as $playerId) {
             $playerId = (int)$playerId;
             $this->gamestate->runStateClassZombie($this->gamestate->getCurrentState($playerId), $playerId);
         }
-    }*/
+    }
 }

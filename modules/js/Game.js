@@ -183,9 +183,11 @@ export class Game {
                 div.dataset.rank = card.rank; // value 1..14
 
                 let cardfn = `${card.rank}-${card.suit}.svg`;
-                switch (card.joker) {
-                    case 1: cardfn = 'joker-1.svg'; break;
-                    case 2: cardfn = 'joker-2.svg'; break;
+                if (card.suit == 0) {
+                    switch (card.joker) {
+                        case 1: cardfn = 'joker-1.svg'; break;
+                        case 2: cardfn = 'joker-2.svg'; break;
+                    }
                 }
                 div.style.backgroundImage = `url('${this.bga.images.getImgUrl(cardfn)}')`;
 
@@ -351,7 +353,6 @@ export class Game {
     }
 
     jokerSuit(card, rank) {
-        // Handle joker suit selection logic
         let statusBar = this.bga.statusBar;
         let allowed = [SPADE, HEART, CLUB, DIAMOND];
         let st = this.st;
@@ -370,7 +371,6 @@ export class Game {
     }
 
     jokerSet(card, rank, suit) {
-        // Handle joker set logic
         let statusBar = this.bga.statusBar;
 
         statusBar.removeActionButtons();
@@ -418,7 +418,7 @@ export class Game {
         let hand = this[`hand${playerId}`];
         if (hand == undefined) return;
         let handCount = hand.cards.length;
-        
+
         if (handCount > count) {
             for (let j = handCount; j > count; j--) {
                 hand.removeCard({
@@ -433,7 +433,7 @@ export class Game {
                     initialSide: 'front',
                     finalSide: 'front',
                     fromElement: this.deck.getElement(),
-                    duration: 10000,
+                    duration: 500,
                     fadeIn: true,
                 });
             }
@@ -740,7 +740,7 @@ export class Game {
                 initialSide: 'front',
                 finalSide: 'front',
                 fadeIn: true,
-                duration: 1000,
+                duration: 500,
                 fromElement: this.deck.getElement(),
             });
             this.st.drew = 1;
