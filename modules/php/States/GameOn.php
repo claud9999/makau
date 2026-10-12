@@ -544,11 +544,6 @@ class GameOn extends GameState
         $discards = $cards->getItemsInLocation('discard');
         $top = $discards->last();
 
-        $globals->set('zombie', json_encode([
-            'playerId' => $playerId,
-            'step' => 1,
-        ]));
-
         $handCards = $cards->getItemsInLocation(['hand', $playerId]);
 
         $st = json_decode($this->bga->globals->get('state'), true);
@@ -557,11 +552,6 @@ class GameOn extends GameState
 
         $jokerRank = 0;
         $jokerSuit = 0;
-
-        $globals->set('zombie', json_encode([
-            'playerId' => $playerId,
-            'step' => 3,
-        ]));
 
         // compute which cards can be played
         $actionCards = [];
@@ -594,6 +584,12 @@ class GameOn extends GameState
                             )
                                 $nonActionCards[] = $card;
                     }
+                }
+
+                if (count($actionCards) + count($nonActionCards) < 1) {
+                    if ($st['drew'] > 0) return $this->actPass($playerId);
+                    $this->actDraw($playerId);
+                    return $this->zombie($playerId);
                 }
                 break;
             case Game::DRAW_DEMAND:
@@ -665,12 +661,12 @@ class GameOn extends GameState
         if (count($actionCards) > 0) {
             $card = $actionCards[rand(0, count($actionCards) - 1)];
 
-            if ($card->rank == Game::JOKER) {
+            $jokers = [];
+            if ($card->joker > 0) {
                 $jokers = [
                     $card->id => ['rank' => $jokerRank, 'suit' => $jokerSuit]
                 ];
             }
-            $jokers = [];
 
             return $this->actPlay([$card->id], $jokers, $playerId);
         } else if (count($nonActionCards) > 0) {
@@ -678,8 +674,7 @@ class GameOn extends GameState
 
             return $this->actPlay([$card->id], [], $playerId);
         } else if ($st['drew'] == 0) {
-            $drawResult = $this->actDraw($playerId);
-            if ($drawResult != null) return $drawResult;
+            $this->actDraw($playerId);
             return $this->zombie($playerId);
         } else {
             return $this->actPass($playerId);
@@ -725,12 +720,12 @@ class GameOn extends GameState
         return implode(", ", array_map(fn($card) => $this->getCardName($card), $cards));
     }
 
-    function debug_playToEndRound()
+/*    function debug_playToEndRound()
     {
         // actually only does one move, whatev!
         foreach ($this->gamestate->getActivePlayerList() as $playerId) {
             $playerId = (int)$playerId;
             $this->gamestate->runStateClassZombie($this->gamestate->getCurrentState($playerId), $playerId);
         }
-    }
+    }*/
 }

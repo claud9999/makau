@@ -10,3 +10,7 @@
 * setPlayOptions (and others) are called multiple times for no reason, remove redundancies
 * https://en.doc.boardgamearena.com/BGA_Studio_Guidelines
 * https://en.doc.boardgamearena.com/Pre-release_checklist
+* support 5+ players? (multiple decks?)
+
+# scenario
+* player plays Q, can player also play A?

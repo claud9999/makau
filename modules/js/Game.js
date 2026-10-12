@@ -821,4 +821,7 @@ export class Game {
 
         this.setPlayOptions();
     }
+
+    async notif_Debug(args) {
+    }
 }
