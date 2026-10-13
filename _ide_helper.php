@@ -585,7 +585,7 @@ namespace Bga\GameFramework {
          * 
          * @return bool if the table is Turn-based.
          */
-        function isTurnBased(): bool {
+        public function isTurnBased(): bool {
             return false;
         }
     
@@ -594,8 +594,26 @@ namespace Bga\GameFramework {
          * 
          * @return bool if the table is Real-time.
          */
-        function isRealTime(): bool {
+        public function isRealTime(): bool {
             return false;
+        }
+
+        /**
+         * Returns the current game version.
+         * 
+         * @return int the game version
+         */
+        public function getGameVersion(): int {
+            return 0;
+        }
+
+        /**
+         * Get the selected language index as defined in the gameinfos file.
+         *
+         * @return int|null the selected language index, or null if the game has no game languages.
+         */
+        public function getGameLanguage(): ?int {
+            return 0;
         }
     }
 
@@ -1550,11 +1568,13 @@ namespace Bga\GameFramework {
         }
 
         /**
-         * Returns an index of the selected language as defined in gameinfos.inc.php.
+         * Returns an index of the selected language as defined in gameinfos.
+         * 
+         * @deprecated use $this->bga->tableOptions->getGameLanguage()
          */
-        final public function getGameLanguage(): string
+        final public function getGameLanguage(): int
         {
-            return '';
+            return 0;
         }
 
         /**
@@ -1578,6 +1598,8 @@ namespace Bga\GameFramework {
          *
          * NOTE: this method use globals "cache" if you directly manipulated globals table OR call this function after
          * `undoRestorePoint()` - it won't work as expected.
+         * 
+         * @deprecated use $this->bga->globals API instead. It's not the same DB table as GameStateValue, so if your game is in production and using it, keep it, except if you want to migrate the data to the new table too.
          * 
          * @param string $label the label
          * @param ?int $default a default value if the label doesn't have an associated value
@@ -1836,6 +1858,8 @@ namespace Bga\GameFramework {
          * NOTE: this method use globals "cache" if you directly manipulated globals table OR call this function after
          * `undoRestorePoint()` - it won't work as expected.
          * 
+         * @deprecated use $this->bga->globals API instead. It's not the same DB table as GameStateValue, so if your game is in production and using it, keep it, except if you want to migrate the data to the new table too.
+         * 
          * @param string $label the label
          * @param int $increment the increment to add to the current value
          * @return int the new value 
@@ -2036,6 +2060,8 @@ namespace Bga\GameFramework {
          * Initialize global value. This is not required if you ok with default value if 0. This should be called from
          * `Table::setupNewGame()` function.
          * 
+         * @deprecated use $this->bga->globals API instead. It's not the same DB table as GameStateValue, so if your game is in production and using it, keep it, except if you want to migrate the data to the new table too.
+         * 
          * @param string $label the label
          * @param int $value the initial value
          * @return void
@@ -2047,6 +2073,8 @@ namespace Bga\GameFramework {
 
         /**
          * Set the current value of a global.
+         * 
+         * @deprecated use $this->bga->globals API instead. It's not the same DB table as GameStateValue, so if your game is in production and using it, keep it, except if you want to migrate the data to the new table too.
          * 
          * @param string $label the label
          * @param int $value the value to store
@@ -2229,6 +2257,8 @@ namespace Bga\GameFramework {
          * this method to access value of game options Game_options_and_preferences:_gameoptions.inc.php, in that case,
          * IDs need to be between 100 and 199. You must not use globals outside the range defined above, as those values
          * are used by other components of the framework.
+         * 
+         * @deprecated use $this->bga->globals API instead. It's not the same DB table as GameStateValue, so if your game is in production and using it, keep it, except if you want to migrate the data to the new table too.
          *
          * @param array<string, int> $labels
          */
@@ -3583,16 +3613,50 @@ namespace Bga\GameFramework\GameResult {
         /**
          * Score all players separately (no-team game).
          *
-         * @param Player[] $players The players at this table. Currently, real players only.
+         * @param array<int, Player|int|null>|null $players The players or their IDs.
          * @param bool $reverseScore Whether negative scores should be rewarded
          * @param bool $reverseScoreAux Whether auxiliary score ordering is reversed
          *
          * @return self
          */
         public static function individualRanking(
-            array $players,
+            ?array $players = null,
             bool $reverseScore = false,
             bool $reverseScoreAux = false,
+        ) {
+            return new self();
+        }
+
+        /**
+         * Build a solo game result (internally treated as a cooperative result).
+         *
+         * @param Player|int|null $player The player or player ID at this table. Null finds the only player.
+         * @param int $score The solo score. For display only, the outcome is decided by $win.
+         * @param bool $win indicates if the coop game is won or lost
+         *
+         * @return self
+         */
+        public static function solo(
+            Player|int|null $player = null,
+            int $score = 0,
+            bool $win = true,
+        ) {
+            return new self();
+        }
+
+        /**
+         * Build a cooperative result with a single team representing all players.
+         *
+         * @param array<int, Player|int|null>|null $players The players or their IDs. Null uses all players.
+         * @param int $score The team score. For display only, the outcome is decided by $win.
+         * @param bool $win indicates if the coop game is won or lost
+         *
+         * @return self
+         */
+        public static function coop(
+            ?array $players = null,
+            int $score = 0,
+            bool $win = true,
         ) {
             return new self();
         }
