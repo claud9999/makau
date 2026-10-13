@@ -65,44 +65,39 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
+        // $game->notify->all('Debug', 'actPass(' . ", {$currentPlayerId})");
+
         $st = json_decode($this->bga->globals->get('state'), true);
 
         $demand = $st['demand'];
-        if ($demand == Game::DRAW_DEMAND)
+        if ($st["skip{$currentPlayerId}"] > 0) {
+            // no changes to demands, which go to the next
+            // non-skipped player
+            $st["skip{$currentPlayerId}"]--;
+        } else  if ($demand == Game::SKIP_DEMAND) {
+            $st["skip{$currentPlayerId}"] += $st['demandArg'] - 1;
+            $st['demand'] = Game::NO_DEMAND;
+            $st['demandArg'] = 0;
+        } else if ($demand == Game::DRAW_DEMAND) {
             return $game->err($currentPlayerId, 'You cannot pass when you have to draw.');
-
-        if (
+        } else if (
             $demand == Game::NO_DEMAND
-            && $st["skip{$currentPlayerId}"] == 0
             && $st['drew'] == 0
         )
             return $game->err($currentPlayerId, 'You have to draw before passing.');
 
-        $skip = $st["skip{$currentPlayerId}"];
-
-        switch ($st['demand']) {
-            case Game::SKIP_DEMAND:
-                $skip += $st['demandArg'];
-                $st['demand'] = Game::NO_DEMAND;
-                $st['demandArg'] = 0;
-                break;
-            case Game::SUIT_DEMAND:
-                $st['demand'] = Game::NO_DEMAND;
-                $st['demandArg'] = 0;
-                break;
-            case Game::RANK_DEMAND:
-                if ($st['lastJack'] == $currentPlayerId) {
-                    $st['demand'] = Game::NO_DEMAND;
-                    $st['demandArg'] = 0;
-                    $st['lastJack'] = 0;
-                }
-                break;
+        // all good, go ahead
+        if (
+            $demand == Game::RANK_DEMAND
+            && $st['lastJack'] == $currentPlayerId
+        ) {
+            // remove rank demand if I made it
+            $st['demand'] = Game::NO_DEMAND;
+            $st['demandArg'] = 0;
+            $st['lastJack'] = 0;
         }
-        $st['drew'] = 0;
 
-        if ($skip > 0)
-            // I have more skips to skip
-            $st["skip{$currentPlayerId}"] = $skip - 1;
+        $st['drew'] = 0;
 
         $this->bga->globals->set('state', json_encode($st));
 
@@ -125,6 +120,8 @@ class GameOn extends GameState
     {
         $game = $this->game;
         $cards = $game->cards;
+
+        // $game->notify->all('Debug', 'actDraw(' . ", {$currentPlayerId})");
 
         $st = json_decode($this->bga->globals->get('state'), true);
 
@@ -208,7 +205,7 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
-        //$game->notify->all('Debug', 'actPlay(' . json_encode($cardIds) . ', ' . json_encode($jokers) . ", {$currentPlayerId}, {$rankDemand}, {$suitDemand})");
+        // $game->notify->all('Debug', 'actPlay(' . json_encode($cardIds) . ', ' . json_encode($jokers) . ", {$currentPlayerId}, {$rankDemand}, {$suitDemand})");
         $st = json_decode($this->bga->globals->get('state'), true);
 
         if ($st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'You must pass.');
