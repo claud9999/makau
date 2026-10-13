@@ -51,6 +51,9 @@ class Game extends \Bga\GameFramework\Table
                 ],
                 self::DIAMOND => [
                     'name' => clienttranslate('Diamond')
+                ],
+                self::ANY_SUIT => [
+                    'name' => clienttranslate('Any Suit')
                 ]
             ],
             "rank" => [
@@ -67,7 +70,8 @@ class Game extends \Bga\GameFramework\Table
                 self::JACK => ['name' => clienttranslate('Jack')],
                 self::QUEEN => ['name' => clienttranslate('Queen')],
                 self::KING => ['name' => clienttranslate('King')],
-                self::JOKER => ['name' => clienttranslate('Joker')]
+                self::JOKER => ['name' => clienttranslate('Joker')],
+                self::ANY_RANK => ['name' => clienttranslate('Any Rank')],
             ]
         ];
     }

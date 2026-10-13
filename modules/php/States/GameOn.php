@@ -195,7 +195,7 @@ class GameOn extends GameState
     }
 
     #[PossibleAction]
-    public function actPlay(#[IntArrayParam()] array $cardIds, #[JsonParam(associative: true)] array $jokers, int $currentPlayerId)
+    public function actPlay(#[IntArrayParam()] array $cardIds, #[JsonParam(associative: true)] array $jokers, int $currentPlayerId, int $rankDemand = 0, int $suitDemand = 0)
     {
         $game = $this->game;
         $cards = $game->cards;
@@ -205,21 +205,9 @@ class GameOn extends GameState
         if ($st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'You must pass.');
         if (count($cardIds) < 1) return $game->err($currentPlayerId, 'You have no cards to play.');
 
-        $playedCards = [];
+        $playedCards = array_map(fn($cardId) => $cards->getItemById($cardId), $cardIds);
 
-        // remap Jokers to what the player chose
-        for ($i = 0; $i < count($cardIds); $i++) {
-            $cardId = $cardIds[$i];
-            $card = $cards->getItemById($cardId);
-            $playedCards[] = $card;
-            if (array_key_exists($cardId, $jokers)) {
-                $card->rank = $jokers[$cardId]['rank'];
-                $card->suit = $jokers[$cardId]['suit'];
-                $cards->updateItem($card, ['rank', 'suit']);
-            }
-        }
-
-        $playedCount = count($playedCards);
+        $playedCount = count($cardIds);
 
         $demand = $st['demand'];
         $demandArg = $st['demandArg'];
@@ -229,64 +217,79 @@ class GameOn extends GameState
         $rankPick = 0;
         $suitPick = 0;
 
-        if ($demand == Game::NO_DEMAND) {
-            // compute new demand based on what's being played
-            $card = $playedCards[0];
-            switch ($card->rank) {
-                case Game::ACE:
-                    if ($playedCount > 1)
-                        return $game->err($currentPlayerId, "You can only play one card when making a demand.");
-                    $suitPick = $currentPlayerId;
-                    break;
-                case 2:
-                case 3:
-                    $demand = Game::DRAW_DEMAND;
-                    break;
-                case 4:
-                    $demand = Game::SKIP_DEMAND;
-                    break;
-                case Game::JACK:
-                    $demand = Game::RANK_DEMAND;
-                    if ($playedCount > 1)
-                        return $game->err($currentPlayerId, "You can only play one card when making a demand.");
-                    $rankPick = $currentPlayerId;
-                    break;
-                case Game::KING:
-                    switch ($card->suit) {
-                        case Game::SPADE:
-                        case Game::HEART:
-                            $demand = Game::DRAW_DEMAND;
-                    }
-            }
-        }
+        $discards = $cards->getItemsInLocation('discard')->values();
+        $top = $discards[count($discards) - 1];
 
-        switch ($demand) {
-            case Game::NO_DEMAND:
-                $top = $playedCards[0];
-                for ($i = 1; $i < $playedCount; $i++) {
-                    $card = $playedCards[$i];
+        for ($i = 0; $i < count($playedCards); $i++) {
+            $card = $playedCards[$i];
+
+            if (array_key_exists($card->id, $jokers)) {
+                $card->rank = $jokers[$card->id]['rank'];
+                $card->suit = $jokers[$card->id]['suit'];
+                $cards->updateItem($card, ['rank', 'suit']);
+            }
+
+            switch ($demand) {
+                case Game::NO_DEMAND:
                     switch ($card->rank) {
-                        case 2:
-                        case 3:
-                        case 4:
-                        case Game::KING:
-                            if ($card->suit == Game::DIAMOND || $card->suit == Game::CLUB) break;
-                        case Game::JACK:
                         case Game::ACE:
-                            return $game->err($currentPlayerId, 'You cannot play demands with non-action cards.');
+                            if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                            $demand = Game::SUIT_DEMAND;
+                            if ($suitDemand > 0) $demandArg = $suitDemand;
+                            else $suitPick = $currentPlayerId;
                             break;
+                        case 2:
+                            if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                            $demand = Game::DRAW_DEMAND;
+                            $demandArg += 2;
+                            break;
+                        case 3:
+                            if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                            $demand = Game::DRAW_DEMAND;
+                            $demandArg += 3;
+                            break;
+                        case 4:
+                            if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                            $demand = Game::SKIP_DEMAND;
+                            $demandArg++;
+                            break;
+                        case Game::JACK:
+                            if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                            $demand = Game::RANK_DEMAND;
+                            if ($rankDemand > 0) $demandArg = $rankDemand;
+                            else $rankPick = $currentPlayerId;
+                        case Game::KING:
+                            switch ($card->suit) {
+                                case Game::SPADE:
+                                    $reverse = $currentPlayerId;
+                                case Game::HEART:
+                                    if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                                    $demand = Game::DRAW_DEMAND;
+                                    $demandArg += 5;
+                                    $battleKing = $currentPlayerId;
+                                    break;
+                                case Game::DIAMOND:
+                                case Game::CLUB:
+                                    if ($battleKing) {
+                                        $demand = Game::NO_DEMAND;
+                                        $demandArg = 0;
+                                        $battleKing = 0;
+                                        $reverse = 0;
+                                    }
+                                    break;
+                            }
+                            break;
+                        default:
+                            if (
+                                $top->rank != Game::QUEEN
+                                && $card->rank != Game::QUEEN
+                                && $card->suit != $top->suit
+                                && abs($card->rank - $top->rank) > 1
+                            ) return $game->err($currentPlayerId, 'Cards must be in sequence or the same rank.');
+                            $top = $card;
                     }
-                    if (
-                        $top->rank != Game::QUEEN
-                        && $card->rank != Game::QUEEN
-                        && $card->suit != $top->suit
-                        && abs($card->rank - $top->rank) > 1
-                    ) return $game->err($currentPlayerId, 'Cards must be in sequence or the same rank.');
-                    $top = $card;
-                }
-                break;
-            case Game::DRAW_DEMAND:
-                foreach ($playedCards as $card) {
+                    break;
+                case Game::DRAW_DEMAND:
                     switch ($card->rank) {
                         case 2:
                             $demandArg += 2;
@@ -309,50 +312,49 @@ class GameOn extends GameState
                                     $battleKing = 0;
                                     $demandArg = 0;
                                     $demand = Game::NO_DEMAND;
+                                    $reverse = 0;
                                     break;
                             }
                             break;
                         default:
                             return $game->err($currentPlayerId, "You can only play draw cards.");
                     }
-                }
-                break;
-            case Game::SKIP_DEMAND:
-                foreach ($playedCards as $card) {
+                    break;
+                case Game::SKIP_DEMAND:
                     if (
                         $card->rank != 4
                     ) return $game->err($currentPlayerId, "You can only play skip cards.");
                     $demandArg++;
-                }
-                break;
-            case Game::RANK_DEMAND:
-                if ($playedCount > 1)
-                    return $game->err($currentPlayerId, "You can only play one card.");
+                    break;
+                case Game::RANK_DEMAND:
+                    if ($card->rank == Game::JACK) {
+                        if ($i > 0) return $game->err($currentPlayerId, 'You can only play one card.');
+                        if ($rankDemand) $demandArg = $rankDemand;
+                        else $rankPick = $currentPlayerId;
+                        $lastJack = $currentPlayerId;
+                    } else if ($card->rank != $demandArg)
+                        return $game->err($currentPlayerId, "You need to play the rank.");
+                    else if ($currentPlayerId == $lastJack) {
+                        $lastJack = 0;
+                        $demand = 0;
+                        $demandArg = 0;
+                    }
+                    break;
+                case Game::SUIT_DEMAND:
+                    if ($playedCount > 1)
+                        return $game->err($currentPlayerId, "You can only play one card.");
+                    if (
+                        $demandArg < 20 && $playedCards[0]->suit != $demandArg
+                        || $playedCards[0]->rank < 5
+                        || $playedCards[0]->rank > 10
+                    ) return $game->err($currentPlayerId, "You need to play the suit.");
 
-                $card = $playedCards[0];
-                if ($card->rank == Game::JACK) {
-                    $rankPick = $currentPlayerId;
-                } else if ($card->rank != $demandArg)
-                    return $game->err($currentPlayerId, "You need to play the rank.");
-                else if ($currentPlayerId == $lastJack) {
-                    $lastJack = 0;
-                    $demand = 0;
+                    // we've cleared demand
+                    $demand = Game::NO_DEMAND;
                     $demandArg = 0;
-                }
-                break;
-            case Game::SUIT_DEMAND:
-                if ($playedCount > 1)
-                    return $game->err($currentPlayerId, "You can only play one card.");
-                if (
-                    $playedCards[0]->suit != $demandArg
-                    || $playedCards[0]->rank < 5
-                    || $playedCards[0]->rank > 10
-                ) return $game->err($currentPlayerId, "You need to play the suit.");
-
-                // we've cleared demand
-                $demand = Game::NO_DEMAND;
-                $demandArg = 0;
-                break;
+                    break;
+            }
+            $top = $card;
         }
 
         //////////// valid play, enact
@@ -419,6 +421,22 @@ class GameOn extends GameState
                 $message = $message . $this->getCardName($playedCards[$i]);
                 if ($i < count($playedCards)) $message = $message . ', ';
             }
+            switch ($demand) {
+                case Game::DRAW_DEMAND:
+                    $message = $message . " and the next player draws {$demandArg} cards";
+                    break;
+                case Game::SKIP_DEMAND:
+                    $message = $message . " and the next player is skipped {$demandArg} times";
+                    break;
+                case Game::RANK_DEMAND:
+                    if ($demandArg)
+                        $message = $message . ' and demands everyone play ' . $game->cardTypes['rank'][$demandArg]['name'];
+                    break;
+                case Game::SUIT_DEMAND:
+                    if ($demandArg)
+                        $message = $message . ' and demands everyone play ' . $game->cardTypes['suit'][$demandArg]['name'];
+                    break;
+            }
             $message = $message . '.';
 
             // vvvvvv parameters not saved but sent to the client
@@ -455,8 +473,7 @@ class GameOn extends GameState
 
         // vvvvvv parameters not saved but sent to the client
         $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
-        if ($rank == Game::ANY_RANK) $st['rankDemandName'] = 'any rank';
-        else $st['rankDemandName'] = $game->cardTypes['rank'][$rank]['name'];
+        $st['rankDemandName'] = $game->cardTypes['rank'][$rank]['name'];
 
         $this->game->bga->notify->all('Selected', clienttranslate('${playerName} demands everyone play ${rankDemandName}.'), $st);
 
@@ -481,10 +498,7 @@ class GameOn extends GameState
 
         // vvvvvv parameters not saved but sent to the client
         $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
-        if ($suit == Game::ANY_SUIT)
-            $st['suitName'] = 'any suit';
-        else
-            $st['suitName'] = $game->cardTypes['suit'][$st['demandArg']]['name'] . ' suit';
+        $st['suitName'] = $game->cardTypes['suit'][$st['demandArg']]['name'] . ' suit';
 
         $this->game->bga->notify->all('Selected', clienttranslate('${playerName} demands the next player play a non-action card of ${suitName}.'), $st);
 
@@ -546,25 +560,20 @@ class GameOn extends GameState
         $top = $discards[count($discards) - 1];
 
         $handCards = $cards->getItemsInLocation(['hand', $playerId])->values();
-        
-//        $game->notify->all('Debug', 'zombie ' . $this->getCardNames($handCards));
 
         $st = json_decode($this->bga->globals->get('state'), true);
 
         if ($st["skip{$playerId}"] > 0) return $this->actPass($playerId);
 
-        $jokerRank = 0;
-        $jokerSuit = 0;
-
         // compute which cards can be played
         $actionCards = [];
         $nonActionCards = [];
+        $jokers = [];
+        $rankDemand = 0;
+        $suitDemand = 0;
+
         switch ($st['demand']) {
             case Game::NO_DEMAND:
-
-                $jokerRank = 4;
-                $jokerSuit = $top->suit;
-
                 foreach ($handCards as $card) {
                     switch ($card->rank) {
                         case 2:
@@ -572,7 +581,10 @@ class GameOn extends GameState
                         case 4:
                         case Game::JACK:
                         case Game::KING:
-                            if ($card->suit == $top->suit)
+                            if (
+                                $card->suit == $top->suit
+                                || $card->rank == $top->rank
+                            )
                                 $actionCards[] = $card;
                             break;
                         // wilds
@@ -590,49 +602,95 @@ class GameOn extends GameState
                     }
                 }
 
-                if (count($actionCards) + count($nonActionCards) < 1) {
+                if (count($actionCards) > 0) {
+                    $card = $actionCards[rand(0, count($actionCards) - 1)];
+
+                    if ($card->joker) {
+                        $jokers[$card->id] = [
+                            'rank' => 4,
+                            'suit' => $top->suit,
+                        ];
+                    } else if ($card->rank == Game::JACK) {
+                        $rankDemand = 20; // in case we don't find any
+                        foreach ($handCards as $handCard) {
+                            if ($handCard->rank > 4 && $handCard->rank < 11) {
+                                $rankDemand = $handCard->rank;
+                                break;
+                            }
+                        }
+                    } else if ($card->rank == Game::ACE) {
+                        $suitDemand = 20; // in case we don't find any
+                        foreach ($handCards as $handCard) {
+                            if ($handCard->rank > 4 && $handCard->rank < 11) {
+                                $suitDemand = $handCard->suit;
+                                break;
+                            }
+                        }
+                    }
+
+                    return $this->actPlay([$card->id], $jokers, $playerId, $rankDemand, $suitDemand);
+                } else if (count($nonActionCards) > 0) {
+                    // TODO: handle sequences, possibly more valuable than action cards!
+                    $card = $nonActionCards[rand(0, count($nonActionCards) - 1)];
+                    return $this->actPlay([$card->id], $jokers, $playerId);
+                } else {
                     if ($st['drew'] > 0) return $this->actPass($playerId);
                     $this->actDraw($playerId);
                     return $this->zombie($playerId);
                 }
-                break;
             case Game::DRAW_DEMAND:
-                $jokerRank = 2;
-                $jokerSuit = $top->suit;
-
                 foreach ($handCards as $card) {
                     if (
                         $card->rank == 2
                         || $card->rank == 3
-                        || $card->rank == Game::KING && (
+                        || $card->rank == Game::KING
+                        && (
                             $card->suit < 3
-                            || $st['kingDemand'] != 0
+                            || $st['battleKing'] > 0
                         )
-                        || $card->rank == Game::JOKER
+                        || $card->rank == Game::JOKER // should I use a joker for a 5-card draw?
                     ) $actionCards[] = $card;
                 }
 
-                if (count($actionCards) + count($nonActionCards) < 1)
+                if (count($actionCards) > 0) {
+                    foreach ($actionCards as $card) {
+                        if ($card->joker > 0) {
+                            $jokers[$card->id] = [
+                                'rank' => Game::KING,
+                                'suit' => Game::HEART,
+                            ];
+                        }
+                    }
+
+                    // play all the draw cards
+                    return $this->actPlay(array_map(fn($card) => $card->id, $actionCards), $jokers, $playerId);
+                } else {
                     return $this->actDraw($playerId);
-                break;
+                }
             case Game::SKIP_DEMAND:
                 foreach ($handCards as $card) {
-                    $jokerRank = 4;
-                    $jokerSuit = $top->suit;
-
                     if (
                         $card->rank == 4
-                        || $card->rank == Game::JOKER
+                        || $card->rank == Game::JOKER // should I use a joker for a skip?
                     ) $actionCards[] = $card;
                 }
 
-                if (count($actionCards) + count($nonActionCards) < 1)
-                    return $this->actPass($playerId);
-                break;
-            case Game::RANK_DEMAND:
-                $jokerRank = $st['demandArg'];
-                $jokerSuit = $top->suit;
+                if (count($actionCards) > 0) {
+                    foreach ($actionCards as $card) {
+                        if ($card->joker > 0) {
+                            $jokers[$card->id] = [
+                                'rank' => 4,
+                                'suit' => Game::CLUB,
+                            ];
+                        }
+                    }
 
+                    // play all the skip cards
+                    return $this->actPlay(array_map(fn($card) => $card->id, $actionCards), $jokers, $playerId);
+                } else {
+                    return $this->actPass($playerId);
+                }
+            case Game::RANK_DEMAND:
                 foreach ($handCards as $card) {
                     if ($card->rank == Game::JOKER) {
                         $card->rank = Game::JACK;
@@ -643,45 +701,63 @@ class GameOn extends GameState
                     ) $nonActionCards[] = $card;
                 }
 
-                if (count($actionCards) + count($nonActionCards) < 1)
+                if (count($nonActionCards) > 0) {
+                    // best to use non-action to meet demand
+                    $card = $nonActionCards[rand(0, count($nonActionCards) - 1)];
+
+                    if ($card->rank == Game::JACK) {
+                        $rankDemand = 20; // in case we don't find any
+                        foreach ($handCards as $handCard) {
+                            if ($handCard->rank > 4 && $handCard->rank < 11) {
+                                $rankDemand = $handCard->rank;
+                                break;
+                            }
+                        }
+                    }
+
+                    return $this->actPlay([$card->id], $jokers, $playerId, $rankDemand);
+                } else if (count($actionCards) > 0) {
+                    $card = $actionCards[rand(0, count($actionCards) - 1)];
+                    if ($card->joker) {
+                        $rank = 10;
+                        if ($st['demandArg'] < 20) $rank = $st['demandArg'];
+                        $jokers[$card->id] = [
+                            'rank' => $rank,
+                            'suit' => Game::CLUB,
+                        ];
+                    }
+                    return $this->actPlay([$card->id], $jokers, $playerId);
+                } else {
                     return $this->actPass($playerId);
-                break;
+                }
             case Game::SUIT_DEMAND:
                 $jokerRank = rand(5, 10);
                 $jokerSuit = $st['demandArg'];
 
                 foreach ($handCards as $card) {
-                    if (
+                    if ($card->joker) $actionCards[] = $card;
+                    else if (
                         $card->suit == $st['demandArg']
                         && $card->rank > 4 && $card->rank < 11
                     ) $nonActionCards[] = $card;
                 }
 
-                if (count($actionCards) + count($nonActionCards) < 1)
+                if (count($nonActionCards) > 0) {
+                    // best to use non-action to meet demand
+                    $card = $nonActionCards[rand(0, count($nonActionCards) - 1)];
+                    return $this->actPlay([$card->id], $jokers, $playerId);
+                } else if (count($actionCards) > 0) {
+                    $card = $actionCards[rand(0, count($actionCards) - 1)];
+                    if ($card->joker) {
+                        $jokers[$card->id] = [
+                            'rank' => 10,
+                            'suit' => $st['demandArg'],
+                        ];
+                    }
+                    return $this->actPlay([$card->id], $jokers, $playerId);
+                } else {
                     return $this->actPass($playerId);
-                break;
-        }
-
-        if (count($actionCards) > 0) {
-            $card = $actionCards[rand(0, count($actionCards) - 1)];
-
-            $jokers = [];
-            if ($card->joker > 0) {
-                $jokers = [
-                    $card->id => ['rank' => $jokerRank, 'suit' => $jokerSuit]
-                ];
-            }
-
-            return $this->actPlay([$card->id], $jokers, $playerId);
-        } else if (count($nonActionCards) > 0) {
-            $card = $nonActionCards[rand(0, count($nonActionCards) - 1)];
-
-            return $this->actPlay([$card->id], [], $playerId);
-        } else if ($st['drew'] == 0) {
-            $this->actDraw($playerId);
-            return $this->zombie($playerId);
-        } else {
-            return $this->actPass($playerId);
+                }
         }
     }
 
@@ -716,7 +792,7 @@ class GameOn extends GameState
 
     function getCardName($card): string
     {
-        if ($card->joker) return 'Joker';
+        if ($card->rank > 13) return "Joker (id={$card->id} rank={$card->rank} suit={$card->suit})";
         return ($this->game->cardTypes['rank'][$card->rank]['name'] . " of " . $this->game->cardTypes['suit'][$card->suit]['name'] . 's');
     }
 
@@ -725,7 +801,7 @@ class GameOn extends GameState
         return implode(", ", array_map(fn($card) => $this->getCardName($card), $cards));
     }
 
-/*    function debug_playToEndRound()
+    /*    function debug_playToEndRound()
     {
         // actually only does one move, whatev!
         foreach ($this->gamestate->getActivePlayerList() as $playerId) {

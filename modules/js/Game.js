@@ -412,7 +412,7 @@ export class Game {
         let handCount = hand.cards.length;
 
         if (handCount > count) {
-            for (let j = handCount; j > count; j--) {
+            for (let j = handCount - 1; j > count - 1; j--) {
                 hand.removeCard({
                     id: `player${playerId}card${j}`,
                 });
@@ -599,23 +599,47 @@ export class Game {
             return;
         }
 
-        if (playableCards.length < 1) {
-            switch (st.demand) {
-                case DRAW_DEMAND:
-                    this.enableDraw();
+        switch (st.demand) {
+            case DRAW_DEMAND:
+                if (playableCards.length > 0) {
+                    statusBar.setTitle(_('You may add to the draw demand.'));
+                } else {
                     statusBar.setTitle(_('You must draw.'));
-                    return;
-                case SKIP_DEMAND:
-                    this.enablePass();
+                    this.enableDraw();
+                }
+                break;
+            case SKIP_DEMAND:
+                if (playableCards.length > 0) {
+                    statusBar.setTitle(_('You may add to the skip demand.'));
+                } else {
                     statusBar.setTitle(_('You must pass.'));
-                    return;
-            }
+                    this.enablePass();
+                }
+                break;
+            case RANK_DEMAND:
+                if (playableCards.length > 0) {
+                    statusBar.setTitle(_(`You may play a Jack or a ${this.cardTypes.rank[st.demandArg]}.`));
+                } else {
+                    statusBar.setTitle(_('You must pass.'));
+                    this.enablePass();
+                }
+                    break;
+                    case SUIT_DEMAND:
+                if (playableCards.length > 0) {
+                    statusBar.setTitle(_(`You may play a non - action ${this.cardTypes.suit[st.demandArg]}.`));
+                } else {
+                    statusBar.setTitle(_('You must pass.'));
+                    this.enablePass();
+                }
+                break;
+            default:
+                if (playableCards.length < 1) {
+                    statusBar.setTitle(_('You have no playable cards.'));
+                } else statusBar.setTitle(_('Pick cards to play.'));
 
-            statusBar.setTitle(_('You have no playable cards.'));
-        } else statusBar.setTitle(_('Pick cards to play.'));
-
-        if (!st.drew && demand == '') this.enableDraw();
-        else this.enablePass();
+                if (!st.drew && demand == '') this.enableDraw();
+                else this.enablePass();
+        }
     }
 
     setupNotifications() {
@@ -721,7 +745,7 @@ export class Game {
     async notif_DrawCards(args) {
         this.stateUpdate(args);
 
-        this.deck.setCardNumber(args.deck);
+        await this.deck.setCardNumber(args.deck);
 
         if (args.reshuffled) {
             this.redoDiscards(args);
