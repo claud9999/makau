@@ -79,29 +79,30 @@ class GameOn extends GameState
             return $game->err($currentPlayerId, 'You have to draw before passing.');
 
         $skip = $st["skip{$currentPlayerId}"];
-        if ($demand == Game::SKIP_DEMAND) $skip += $st['demandArg'];
-        if ($skip > 0) {
-            // I have more skips to skip
-            $st["skip{$currentPlayerId}"] = $skip - 1;
-            $st['demand'] = Game::NO_DEMAND;
-            $st['demandArg'] = 0;
-        } else {
-            // if we are not skipping, reset demands
-            switch ($st['demand']) {
-                case Game::SUIT_DEMAND:
+
+        switch ($st['demand']) {
+            case Game::SKIP_DEMAND:
+                $skip += $st['demandArg'];
+                $st['demand'] = Game::NO_DEMAND;
+                $st['demandArg'] = 0;
+                break;
+            case Game::SUIT_DEMAND:
+                $st['demand'] = Game::NO_DEMAND;
+                $st['demandArg'] = 0;
+                break;
+            case Game::RANK_DEMAND:
+                if ($st['lastJack'] == $currentPlayerId) {
                     $st['demand'] = Game::NO_DEMAND;
                     $st['demandArg'] = 0;
-                    break;
-                case Game::RANK_DEMAND:
-                    if ($st['lastJack'] == $currentPlayerId) {
-                        $st['demand'] = Game::NO_DEMAND;
-                        $st['demandArg'] = 0;
-                        $st['lastJack'] = 0;
-                    }
-                    break;
-            }
+                    $st['lastJack'] = 0;
+                }
+                break;
         }
         $st['drew'] = 0;
+
+        if ($skip > 0)
+            // I have more skips to skip
+            $st["skip{$currentPlayerId}"] = $skip - 1;
 
         $this->bga->globals->set('state', json_encode($st));
 
@@ -241,29 +242,30 @@ class GameOn extends GameState
                 case Game::NO_DEMAND:
                     switch ($card->rank) {
                         case Game::ACE:
-                            if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                            if ($i > 0) return $game->err($currentPlayerId, 'You can only play a demand or non-action cards.');
                             $demand = Game::SUIT_DEMAND;
                             if ($suitDemand > 0) $demandArg = $suitDemand;
                             else $suitPick = $currentPlayerId;
                             break;
                         case 2:
-                            if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                            if ($i > 0) return $game->err($currentPlayerId, 'You can only play a demand or non-action cards.');
                             $demand = Game::DRAW_DEMAND;
                             $demandArg += 2;
                             break;
                         case 3:
-                            if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                            if ($i > 0) return $game->err($currentPlayerId, 'You can only play a demand or non-action cards.');
                             $demand = Game::DRAW_DEMAND;
                             $demandArg += 3;
                             break;
                         case 4:
-                            if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                            if ($i > 0) return $game->err($currentPlayerId, 'You can only play a demand or non-action cards.');
                             $demand = Game::SKIP_DEMAND;
                             $demandArg++;
                             break;
                         case Game::JACK:
-                            if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                            if ($i > 0) return $game->err($currentPlayerId, 'You can only play a demand or non-action cards.');
                             $demand = Game::RANK_DEMAND;
+                            $lastJack = $currentPlayerId;
                             if ($rankDemand > 0) $demandArg = $rankDemand;
                             else $rankPick = $currentPlayerId;
                             break;
@@ -272,7 +274,7 @@ class GameOn extends GameState
                                 case Game::SPADE:
                                     $reverse = $currentPlayerId;
                                 case Game::HEART:
-                                    if ($i > 0) return $this->err($currentPlayerId, 'You can only play a demand or non-action cards.');
+                                    if ($i > 0) return $game->err($currentPlayerId, 'You can only play a demand or non-action cards.');
                                     $demand = Game::DRAW_DEMAND;
                                     $demandArg += 5;
                                     $battleKing = $currentPlayerId;
@@ -440,7 +442,7 @@ class GameOn extends GameState
                     $message = $message . " and the next player is skipped {$demandArg} times";
                     break;
                 case Game::RANK_DEMAND:
-                    if ($demandArg)
+                    if ($demandArg and $st['lastJack'] == $currentPlayerId)
                         $message = $message . ' and demands everyone play ' . $game->cardTypes['rank'][$demandArg]['name'];
                     break;
                 case Game::SUIT_DEMAND:
