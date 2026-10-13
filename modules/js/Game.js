@@ -201,6 +201,7 @@ export class Game {
 
         this.deck = new BgaCards.Deck(this.cardsManager, document.getElementById('deck'), {
             cardNumber: args.deck,
+            counter: true
         });
 
         for (let i = 0; i < args.playerIds.length; i++) {
@@ -605,8 +606,8 @@ export class Game {
                     statusBar.setTitle(_('You may add to the draw demand.'));
                 } else {
                     statusBar.setTitle(_('You must draw.'));
-                    this.enableDraw();
                 }
+                this.enableDraw();
                 break;
             case SKIP_DEMAND:
                 if (playableCards.length > 0) {
@@ -623,8 +624,8 @@ export class Game {
                     statusBar.setTitle(_('You must pass.'));
                     this.enablePass();
                 }
-                    break;
-                    case SUIT_DEMAND:
+                break;
+            case SUIT_DEMAND:
                 if (playableCards.length > 0) {
                     statusBar.setTitle(_(`You may play a non - action ${this.cardTypes.suit[st.demandArg]}.`));
                 } else {
@@ -748,8 +749,16 @@ export class Game {
         await this.deck.setCardNumber(args.deck);
 
         if (args.reshuffled) {
-            this.redoDiscards(args);
+            let deckSz = this.deck.getCards().length;
+            while(this.discard.cards.length > 1) {
+                await this.discard.removeCard(this.discard.cards[0]/*, {
+                    fadeOut: false,
+                    slideTo: this.deck.getElement(),
+                }*/);
+                await this.deck.setCardNumber(++deckSz);
+            }
         }
+        await this.deck.setCardNumber(args.deck);
 
         if (args._private) {
             await this.hand.addCards(Array.from(Object.values(args._private.cards)), {
