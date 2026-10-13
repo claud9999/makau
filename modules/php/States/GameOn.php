@@ -63,6 +63,7 @@ class GameOn extends GameState
     public function actPass(int $currentPlayerId)
     {
         $game = $this->game;
+        $cards = $game->cards;
 
         $st = json_decode($this->bga->globals->get('state'), true);
 
@@ -139,9 +140,16 @@ class GameOn extends GameState
         else $draw = 1;
 
         $st['reshuffled'] = false;
-        $drawnCards = $cards->pickItems($draw, 'deck', ['hand', $currentPlayerId])->values();
-        // this may have caused the discards to be reshuffled into a new deck...
-        if ($cards->countItemsInLocation('discard') < 1) {
+        $deckCount = $cards->countItemsInLocation('deck');
+        $discards = $cards->getItemsInLocation('discard');
+        $discardCount = count($discards);
+        if ($draw >= $deckCount) {
+            $st['reshuffled'] = true;
+            for ($i = 0; $i < $discardCount - 1; $i++) {
+                $cards->moveItem($discards[$i], 'deck');
+                $cards->shuffle('deck');
+            }
+
             // reset jokers in the deck
             foreach ($cards->getItemsInLocation('deck')->values() as $card) {
                 if ($card->joker == 1) {
@@ -150,14 +158,10 @@ class GameOn extends GameState
                     $cards->updateItem($card, ['rank', 'suit']);
                 }
             }
-
-            // build a new discard stack
-            $discard = $cards->pickItem('deck', 'discard');
-            while ($discard->rank < 5 || $discard->rank > 10)
-                $discard = $cards->pickItem('deck', 'discard');
-            $st['reshuffled'] = true;
             $st['discard'] = $cards->getItemsInLocation('discard')->values();
         }
+
+        $drawnCards = $cards->pickItems($draw, 'deck', ['hand', $currentPlayerId])->values();
 
         $st['deck'] = $cards->countItemsInLocation('deck');
 
@@ -200,6 +204,7 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
+        $game->notify->all('Debug', 'actPlay(' . json_encode($cardIds) . ', ' . json_encode($jokers) . ", {$currentPlayerId}, {$rankDemand}, {$suitDemand})");
         $st = json_decode($this->bga->globals->get('state'), true);
 
         if ($st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'You must pass.');
@@ -434,7 +439,7 @@ class GameOn extends GameState
                     break;
                 case Game::SUIT_DEMAND:
                     if ($demandArg)
-                        $message = $message . ' and demands everyone play ' . $game->cardTypes['suit'][$demandArg]['name'];
+                        $message = $message . ' and demands the next player play ' . $game->cardTypes['suit'][$demandArg]['name'];
                     break;
             }
             $message = $message . '.';

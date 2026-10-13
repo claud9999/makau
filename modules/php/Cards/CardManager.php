@@ -49,8 +49,9 @@ class CardManager
             $discard = $cards->pickItem('deck', 'discard');
     }
 
-    public function setup()
+    public function setup($playerCount)
     {
+        $deckCount = intdiv($playerCount - 1, 4) + 1;
         $cards = [];
         foreach ([Game::SPADE, Game::HEART, Game::CLUB, Game::DIAMOND] as $suit) {
             foreach (range(1, 13) as $rank) {
@@ -74,6 +75,9 @@ class CardManager
             'rank' => Game::JOKER,
             'joker' => 1
         ];
-        $this->cards->createItems($cards);
+        
+        for ($deck = 0; $deck < $deckCount; $deck++) {
+            $this->cards->createItems($cards);
+        }
     }
 }

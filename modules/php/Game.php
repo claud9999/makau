@@ -144,7 +144,7 @@ class Game extends \Bga\GameFramework\Table
     protected function setupNewGame($players, $options = [])
     {
         $this->cardManager->initDb();
-        $this->cardManager->setup();
+        $this->cardManager->setup(count($players));
         $this->cards = $this->cardManager->cards;
 
         $gameinfos = $this->getGameinfos();
