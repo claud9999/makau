@@ -80,6 +80,9 @@ class GameOn extends GameState
             $st['demandArg'] = 0;
         } else if ($demand == Game::DRAW_DEMAND) {
             return $game->err($currentPlayerId, 'You cannot pass when you have to draw.');
+        } else if ($demand == Game::SUIT_DEMAND) {
+            $st['demand'] = Game::NO_DEMAND;
+            $st['demandArg'] = 0;
         } else if (
             $demand == Game::NO_DEMAND
             && $st['drew'] == 0

@@ -201,7 +201,7 @@ export class Game {
 
         this.deck = new BgaCards.Deck(this.cardsManager, document.getElementById('deck'), {
             cardNumber: args.deck,
-            counter: true
+//            counter: true,
         });
 
         for (let i = 0; i < args.playerIds.length; i++) {
