@@ -1,5 +1,6 @@
 # TODO
 
+* when a player wins a hand, confirm with all players before re-dealing
 * better "buttons"/graphics/fonts
 * update card images to show special cards (+2/+3/skip/etc)
 * game metadata (banner, rules, etc.)

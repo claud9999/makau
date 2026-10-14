@@ -81,12 +81,14 @@ class Game extends \Bga\GameFramework\Table
         $globals = $this->bga->globals;
         $cards = $this->cards;
 
+
         if ($globals->has('state'))
             $st = json_decode($globals->get('state'), true);
         else $st = $this->reset();
 
         $st['playerId'] = $currentPlayerId;
-        $st['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId])->values();
+        if (!$this->isSpectator())
+            $st['hand'] = $cards->getItemsInLocation(['hand', $currentPlayerId])->values();
         $st['discard'] = $cards->getItemsInLocation('discard')->values();
         $st['deck'] = $cards->countItemsInLocation('deck');
         for ($i = 0; $i < count($st['playerIds']); $i++) {

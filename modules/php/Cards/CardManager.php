@@ -45,8 +45,10 @@ class CardManager
 
         $discard = $cards->pickItem('deck', 'discard');
         // keep adding to discard until we find a non-action card
-        while ($discard->rank < 5 || $discard->rank > 10)
+        while ($discard->rank < 5 || $discard->rank > 10) {
+            $cards->moveItem($discard, 'deck', 0);
             $discard = $cards->pickItem('deck', 'discard');
+        }
     }
 
     public function setup($playerCount)
@@ -75,7 +77,7 @@ class CardManager
             'rank' => Game::JOKER,
             'joker' => 1
         ];
-        
+
         for ($deck = 0; $deck < $deckCount; $deck++) {
             $this->cards->createItems($cards);
         }
