@@ -672,6 +672,7 @@ class GameOn extends GameState
                         $actionCards[] = $card;
                     } else if (
                         $card->rank == $st['demandArg']
+                        || $st['demandArg'] == Game::ANY_RANK
                     ) $nonActionCards[] = $card;
                 }
 
@@ -708,7 +709,10 @@ class GameOn extends GameState
                 foreach ($handCards as $card) {
                     if ($card->joker) $actionCards[] = $card;
                     else if (
-                        $card->suit == $st['demandArg']
+                        (
+                            $card->suit == $st['demandArg']
+                            || $st['demandArg'] == Game::ANY_SUIT
+                        )
                         && $card->rank > 4 && $card->rank < 11
                     ) $nonActionCards[] = $card;
                 }

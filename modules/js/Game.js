@@ -484,7 +484,7 @@ export class Game {
         );
     }
 
-    setPlayOptions() {
+    setPlayOptions(playerId = undefined) {
         // conveniences
         if (this.spectator) return;
 
@@ -495,18 +495,18 @@ export class Game {
         let st = this.st;
         let players = this.bga.players;
         let playableCards = [];
-        let currentPlayerId = this.bga.players.getCurrentPlayerId();
-        let activePlayerId = this.bga.players.getActivePlayerId();
 
         this.disableDraw();
         this.disablePlay();
         this.disablePass();
 
+        if (playerId == undefined) playerId = players.getActivePlayerId();
+
         statusBar.removeActionButtons();
 
-        if (activePlayerId != currentPlayerId) {
+        if (this.spectator || playerId != this.playerId) {
             statusBar.setTitle(_("${playerName} is playing now."), {
-                "playerName": players.getPlayerById(activePlayerId).name,
+                "playerName": players.getPlayerById(playerId).name,
             });
 
             hand.setSelectionMode('single', []);
@@ -515,7 +515,7 @@ export class Game {
 
         // handle skips first, 'cause if there's also other demands,
         // they don't apply to the skipped player
-        if (st[`skip${currentPlayerId}`] > 0) {
+        if (st[`skip${playerId}`] > 0) {
             ////////////////////// must skip
             statusBar.setTitle(_('You must pass.'));
             this.enablePass();
@@ -682,45 +682,43 @@ export class Game {
 
     pickRank() {
         let statusBar = this.bga.statusBar;
-        let st = this.st;
-        let activePlayerId = this.bga.players.getActivePlayerId();
-        let currentPlayerId = this.bga.players.getCurrentPlayerId();
 
         statusBar.removeActionButtons();
 
-        if (!this.spectatoractivePlayerId == currentPlayerId) {
-            let cards = this.hand.cards;
+        if (this.spectator || this.bga.players.getActivePlayerId() != this.playerId) {
+            statusBar.setTitle(`${this.bga.players.getPlayerById(activePlayerId).name} is selecting a rank.`);
+            return;
+        }
 
-            statusBar.setTitle('Select a rank.');
-            this.rankButtons = [];
-            let availableRanks = [];
+        let cards = this.hand.cards;
 
-            for (let i = 0; i < cards.length; i++) {
-                let card = cards[i];
-                if (card.rank > 4 && card.rank < 11) {
-                    availableRanks[card.rank] = card.rank;
-                }
+        statusBar.setTitle('Select a rank.');
+        this.rankButtons = [];
+        let availableRanks = [];
+
+        for (let i = 0; i < cards.length; i++) {
+            let card = cards[i];
+            if (card.rank > 4 && card.rank < 11) {
+                availableRanks[card.rank] = card.rank;
             }
+        }
 
-            for (let i = 5; i < 11; i++) {
-                if (availableRanks[i] == undefined) continue;
-                this.rankButtons[i] = statusBar.addActionButton(_(`${i}`), () => {
-                    this.bga.actions.performAction(
-                        'actPickRank', {
-                        rank: i
-                    });
-                });
-            }
-
-            this.rankButtons[11] = this.bga.statusBar.addActionButton(_('any'), () => {
+        for (let i = 5; i < 11; i++) {
+            if (availableRanks[i] == undefined) continue;
+            this.rankButtons[i] = statusBar.addActionButton(_(`${i}`), () => {
                 this.bga.actions.performAction(
                     'actPickRank', {
-                    rank: ANY_RANK,
+                    rank: i
                 });
             });
-        } else {
-            statusBar.setTitle(`${this.bga.players.getPlayerById(activePlayerId).name} is selecting a rank.`);
         }
+
+        this.rankButtons[11] = this.bga.statusBar.addActionButton(_('any'), () => {
+            this.bga.actions.performAction(
+                'actPickRank', {
+                rank: ANY_RANK,
+            });
+        });
     }
 
     pickSuit() {
@@ -728,36 +726,39 @@ export class Game {
         let st = this.st;
         statusBar.removeActionButtons();
 
-        if (!this.spectator && this.bga.players.getActivePlayerId() == this.playerId) {
-            let cards = this.hand.cards;
+        if (this.spectator || this.bga.players.getActivePlayerId() != this.playerId) {
+            statusBar.setTitle(`${this.bga.players.getPlayerById(activePlayerId).name} is selecting a rank.`);
+            return;
+        }
 
-            statusBar.setTitle('Select a suit.');
-            this.suitButtons = [];
-            let availableSuits = [];
+        let cards = this.hand.cards;
 
-            for (let i = 0; i < cards.length; i++) {
-                let card = cards[i];
-                if (card.rank < 5 || card.rank > 10) continue;
-                // only non-action cards
-                availableSuits[card.suit] = card.suit;
-            }
+        statusBar.setTitle('Select a suit.');
+        this.suitButtons = [];
+        let availableSuits = [];
 
-            for (let i = 1; i < 5; i++) {
-                if (availableSuits[i] == undefined) continue;
-                this.suitButtons[i] = statusBar.addActionButton(_(`${this.cardTypes["suitUnicode"][i]}`), () => {
-                    this.bga.actions.performAction(
-                        'actPickSuit', {
-                        suit: i
-                    });
-                });
-            }
-            this.suitButtons[5] = statusBar.addActionButton(_('any'), () => {
+        for (let i = 0; i < cards.length; i++) {
+            let card = cards[i];
+            if (card.rank < 5 || card.rank > 10) continue;
+            // only non-action cards
+            availableSuits[card.suit] = card.suit;
+        }
+
+        for (let i = 1; i < 5; i++) {
+            if (availableSuits[i] == undefined) continue;
+            this.suitButtons[i] = statusBar.addActionButton(_(`${this.cardTypes["suitUnicode"][i]}`), () => {
                 this.bga.actions.performAction(
                     'actPickSuit', {
-                    suit: ANY_SUIT
+                    suit: i
                 });
             });
         }
+        this.suitButtons[5] = statusBar.addActionButton(_('any'), () => {
+            this.bga.actions.performAction(
+                'actPickSuit', {
+                suit: ANY_SUIT
+            });
+        });
     }
 
     stateUpdate(args) {
@@ -769,7 +770,7 @@ export class Game {
     async notif_Pass(args) {
         this.stateUpdate(args);
 
-        this.setPlayOptions();
+        this.setPlayOptions(args.playerId);
     }
 
     async notif_DrawCards(args) {
@@ -802,7 +803,7 @@ export class Game {
             this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
         }
 
-        this.setPlayOptions();
+        this.setPlayOptions(args.playerId);
     }
 
     async notif_PlayCards(args) {
@@ -822,11 +823,12 @@ export class Game {
 
         this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
 
-        this.setPlayOptions();
+        this.setPlayOptions(args.playerId);
     }
 
     async notif_NewHand(args) {
         let st = this.st;
+        let players = this.bga.players;
 
         this.deck.setCardNumber(args.deck);
 
@@ -835,7 +837,7 @@ export class Game {
 
         for (let i = 0; i < st.playerIds.length; i++) {
             let playerId = st.playerIds[i];
-            if (this.spectator || playerId != st.playerId)
+            if (this.spectator || playerId != this.playerId)
                 this.updateHandSize(playerId, args[`hand${playerId}`]);
         }
 
@@ -848,13 +850,13 @@ export class Game {
 
         this.stateUpdate(args);
 
-        this.setPlayOptions();
+        this.setPlayOptions(args.playerId);
     }
 
     async notif_Selected(args) {
         this.stateUpdate(args);
 
-        this.setPlayOptions();
+        this.setPlayOptions(args.playerId);
     }
 
     async notif_CalledMakau(args) {
@@ -866,7 +868,7 @@ export class Game {
             this.updateHandSize(args.onPlayerId, args[`hand${args.onPlayerId}`]);
         }
 
-        this.setPlayOptions();
+        this.setPlayOptions(args.playerId);
     }
 
     async notif_WinHand(args, notif) {
@@ -876,7 +878,7 @@ export class Game {
     async notif_InvalidPlay(args) {
         if (!this.spectator) this.hand.unselectAll();
 
-        this.setPlayOptions();
+        this.setPlayOptions(args.playerId);
     }
 
     async notif_Debug(args) {
