@@ -6,7 +6,6 @@ namespace Bga\Games\makaucloudnein\States;
 
 use Bga\Games\makaucloudnein\States\GameOver;
 use Bga\Games\makaucloudnein\States\NextPlayer;
-use Bga\Games\makaucloudnein\States\PrevPlayer;
 
 use Bga\Games\makaucloudnein\Game;
 use Bga\GameFramework\StateType;
@@ -205,11 +204,12 @@ class GameOn extends GameState
     #[PossibleAction]
     public function actPlay(#[IntArrayParam()] array $cardIds, #[JsonParam(associative: true)] array $jokers, int $currentPlayerId, int $rankDemand = 0, int $suitDemand = 0)
     {
+        $globals = $this->bga->globals;
         $game = $this->game;
         $cards = $game->cards;
 
         // $game->notify->all('Debug', 'actPlay(' . json_encode($cardIds) . ', ' . json_encode($jokers) . ", {$currentPlayerId}, {$rankDemand}, {$suitDemand})");
-        $st = json_decode($this->bga->globals->get('state'), true);
+        $st = json_decode($globals->get('state'), true);
 
         if ($st["skip{$currentPlayerId}"] > 0) return $game->err($currentPlayerId, 'You must pass.');
         if (count($cardIds) < 1) return $game->err($currentPlayerId, 'You have no cards to play.');
@@ -385,87 +385,44 @@ class GameOn extends GameState
             $cards->moveItem($card, 'discard');
         }
 
-        $handCards = $cards->countItemsInLocation(['hand', $currentPlayerId]);
-        if ($handCards == 0) {
-            ////// WINNNNNNNNNNNN
+        $globals->set('state', json_encode($st));
 
-            // Note: no point saving the current state, it will be reset below.
-
-            $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
-            $game->notify->all('WinHand', clienttranslate('${playerName} wins this hand!'), $st);
-
-            $playerScore = $this->bga->playerScore;
-            $playerScore->inc($currentPlayerId, 1);
-            if ($playerScore->get($currentPlayerId) > 9) {
-                return GameOver::class;
-            }
-
-            $st = $game->reset();
-
-            $this->st = $st;
-
-            $this->bga->globals->set('state', json_encode($st));
-
-            // vvvvvv parameters not saved but sent to the client
-            $st['reshuffled'] = 1;
-
-            $st['_private'] = [];
-            for ($i = 0; $i < count($st['playerIds']); $i++) {
-                $playerId = $st['playerIds'][$i];
-
-                $st["hand{$playerId}"] = $cards->countItemsInLocation(['hand', $playerId]);
-
-                $st["_private"][$playerId] = [
-                    'hand' => $cards->getItemsInLocation(['hand', $playerId])->values()
-                ];
-            }
-
-            $st['playerId'] = $currentPlayerId;
-            $st['discard'] = $cards->getItemsInLocation('discard')->values();
-
-            $game->notify->all('NewHand', clienttranslate('The deck is shuffled and a new hand dealt to each player.'), $st);
-        } else {
-            $this->bga->globals->set('state', json_encode($st));
-
-            $message = '${playerName} plays the ';
-            for ($i = 0; $i < count($playedCards); $i++) {
-                $message = $message . $this->getCardName($playedCards[$i]);
-                if ($i < count($playedCards)) $message = $message . ', ';
-            }
-            switch ($demand) {
-                case Game::DRAW_DEMAND:
-                    $direction = 'next';
-                    if ($st['reverse']) $direction = 'previous';
-                    $message = $message . " and the {$direction} player draws {$demandArg} cards";
-                    break;
-                case Game::SKIP_DEMAND:
-                    $message = $message . " and the next player is skipped {$demandArg} times";
-                    break;
-                case Game::RANK_DEMAND:
-                    if ($demandArg and $st['lastJack'] == $currentPlayerId)
-                        $message = $message . ' and demands everyone play ' . $game->cardTypes['rank'][$demandArg]['name'];
-                    break;
-                case Game::SUIT_DEMAND:
-                    if ($demandArg)
-                        $message = $message . ' and demands the next player play ' . $game->cardTypes['suit'][$demandArg]['name'];
-                    break;
-            }
-            $message = $message . '.';
-
-            // vvvvvv parameters not saved but sent to the client
-            $st['playerName'] = $this->game->getPlayerNameById($currentPlayerId);
-            $st["hand{$currentPlayerId}"] = $handCards;
-            $st['playerId'] = $currentPlayerId;
-            $st['cards'] = $playedCards;
-            $st['discard'] = $cards->getItemsInLocation('discard')->values();
-
-            $game->notify->all('PlayCards', clienttranslate($message), $st);
+        $message = '${playerName} plays the ';
+        for ($i = 0; $i < count($playedCards); $i++) {
+            $message = $message . $this->getCardName($playedCards[$i]);
+            if ($i < count($playedCards)) $message = $message . ', ';
         }
-
-        if ($rankPick == 0 && $suitPick == 0) {
-            if ($st['reverse'] > 0) return PrevPlayer::class;
-            else return NextPlayer::class;
+        switch ($demand) {
+            case Game::DRAW_DEMAND:
+                $direction = 'next';
+                if ($st['reverse']) $direction = 'previous';
+                $message = $message . " and the {$direction} player draws {$demandArg} cards";
+                break;
+            case Game::SKIP_DEMAND:
+                $message = $message . " and the next player is skipped {$demandArg} times";
+                break;
+            case Game::RANK_DEMAND:
+                if ($demandArg and $st['lastJack'] == $currentPlayerId)
+                    $message = $message . ' and demands everyone play ' . $game->cardTypes['rank'][$demandArg]['name'];
+                break;
+            case Game::SUIT_DEMAND:
+                if ($demandArg)
+                    $message = $message . ' and demands the next player play ' . $game->cardTypes['suit'][$demandArg]['name'];
+                break;
         }
+        $message = $message . '.';
+
+        // vvvvvv parameters not saved but sent to the client
+        $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
+        $st["hand{$currentPlayerId}"] = $cards->countItemsInLocation(['hand', $currentPlayerId]);
+        $st['playerId'] = $currentPlayerId;
+        $st['cards'] = $playedCards;
+        $st['discard'] = $cards->getItemsInLocation('discard')->values();
+
+        $game->notify->all('PlayCards', clienttranslate($message), $st);
+
+        if ($rankPick == 0 && $suitPick == 0)
+            return NextPlayer::class;
     }
 
     #[PossibleAction]
