@@ -343,7 +343,12 @@ class GameOn extends GameState
                         if ($rankDemand) $demandArg = $rankDemand;
                         else $rankPick = $currentPlayerId;
                         $lastJack = $currentPlayerId;
-                    } else if ($card->rank != $demandArg)
+                    } else if (
+                        $card->rank != $demandArg
+                        && $demandArg != Game::ANY_RANK
+                        || $card->rank < 5
+                        || $card->rank > 10
+                    )
                         return $game->err($currentPlayerId, "You need to play the rank.");
                     else if ($currentPlayerId == $lastJack) {
                         $lastJack = 0;
@@ -627,17 +632,16 @@ class GameOn extends GameState
                 }
 
                 if (count($actionCards) > 0) {
-                    foreach ($actionCards as $card) {
-                        if ($card->joker > 0) {
-                            $jokers[$card->id] = [
-                                'rank' => Game::KING,
-                                'suit' => Game::HEART,
-                            ];
-                        }
+                    $card = $actionCards[rand(0, count($actionCards) - 1)];
+                    if ($card->joker > 0) {
+                        $jokers[$card->id] = [
+                            'rank' => Game::KING,
+                            'suit' => Game::HEART,
+                        ];
                     }
 
                     // play all the draw cards
-                    return $this->actPlay(array_map(fn($card) => $card->id, $actionCards), $jokers, $playerId);
+                    return $this->actPlay([$card->id], $jokers, $playerId);
                 } else {
                     return $this->actDraw($playerId);
                 }
@@ -650,17 +654,17 @@ class GameOn extends GameState
                 }
 
                 if (count($actionCards) > 0) {
-                    foreach ($actionCards as $card) {
-                        if ($card->joker > 0) {
-                            $jokers[$card->id] = [
-                                'rank' => 4,
-                                'suit' => Game::CLUB,
-                            ];
-                        }
+                    $card = $actionCards[rand(0, count($actionCards) - 1)];
+
+                    if ($card->joker > 0) {
+                        $jokers[$card->id] = [
+                            'rank' => 4,
+                            'suit' => Game::CLUB,
+                        ];
                     }
 
                     // play all the skip cards
-                    return $this->actPlay(array_map(fn($card) => $card->id, $actionCards), $jokers, $playerId);
+                    return $this->actPlay([$card->id], $jokers, $playerId);
                 } else {
                     return $this->actPass($playerId);
                 }
@@ -672,13 +676,21 @@ class GameOn extends GameState
                         $actionCards[] = $card;
                     } else if (
                         $card->rank == $st['demandArg']
-                        || $st['demandArg'] == Game::ANY_RANK
+                        || (
+                            $card->rank > 4
+                            && $card->rank < 11
+                            && $st['demandArg'] == Game::ANY_RANK
+                        )
                     ) $nonActionCards[] = $card;
                 }
 
                 if (count($nonActionCards) > 0) {
                     // best to use non-action to meet demand
                     $card = $nonActionCards[rand(0, count($nonActionCards) - 1)];
+
+                    return $this->actPlay([$card->id], $jokers, $playerId, $rankDemand);
+                } else if (count($actionCards) > 0) {
+                    $card = $actionCards[rand(0, count($actionCards) - 1)];
 
                     if ($card->rank == Game::JACK) {
                         $rankDemand = 20; // in case we don't find any
@@ -690,9 +702,6 @@ class GameOn extends GameState
                         }
                     }
 
-                    return $this->actPlay([$card->id], $jokers, $playerId, $rankDemand);
-                } else if (count($actionCards) > 0) {
-                    $card = $actionCards[rand(0, count($actionCards) - 1)];
                     if ($card->joker) {
                         $rank = 10;
                         if ($st['demandArg'] < 20) $rank = $st['demandArg'];
@@ -701,6 +710,7 @@ class GameOn extends GameState
                             'suit' => Game::CLUB,
                         ];
                     }
+
                     return $this->actPlay([$card->id], $jokers, $playerId);
                 } else {
                     return $this->actPass($playerId);
