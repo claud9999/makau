@@ -96,6 +96,8 @@ class Game extends \Bga\GameFramework\Table
             $st["hand{$playerId}"] = $cards->countItemsInLocation(['hand', $playerId]);
         }
 
+        $st['sequencesAllowed'] = $this->tableOptions->get(103);
+
         return $st;
     }
 

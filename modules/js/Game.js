@@ -589,6 +589,8 @@ export class Game {
                 }
                 break;
             default:
+                if (!st.sequencesAllowed && playCards.length > 0) break;
+                
                 let top = this.discard.cards[this.discard.cards.length - 1];
                 if (playCards.length > 0) top = playCards[playCards.length - 1];
 

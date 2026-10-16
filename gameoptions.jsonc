@@ -69,19 +69,17 @@
     },
     "default": 10
   },
-  /*
   "103": {
     "name": "Card Sequences",
     "description": "Allow sequences of non-action cards to be played together as one play",
     "values": {
       "0": {
-        "name": "No"
+        "name": "No sequences of non-action cards allowed"
       },
       "1": {
-        "name": "Yes"
+        "name": "Sequences of non-action cards allowed"
       }
     },
     "default": 1
   }
-  */
 }
