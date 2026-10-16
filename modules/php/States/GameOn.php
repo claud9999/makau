@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Bga\Games\makaucloudnein\States;
 
-use Bga\Games\makaucloudnein\States\GameOver;
 use Bga\Games\makaucloudnein\States\NextPlayer;
 
 use Bga\Games\makaucloudnein\Game;
@@ -16,11 +15,6 @@ use Bga\GameFramework\Actions\Types\IntArrayParam;
 use Bga\GameFramework\Actions\Types\JsonParam;
 
 /*
-  This game supports players calling "Makau" on other
-  players during their turns, so this code dispenses with state
-  beyond this state and the GameOver state. Who is playing is
-  stored in the state global.
-
   Any condition that results in a call to $game->err() is
   unexpected. The client UI should never produce conditions
   that would trigger these. Hence these messages are not translated.

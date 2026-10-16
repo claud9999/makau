@@ -28,6 +28,8 @@ class NewHand extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
+        $winningScore = $this->game->tableOptions->get(101);
+
         $st = json_decode($globals->get('state'), true);
 
         // Note: no point saving the current state, it will be reset below.
@@ -37,8 +39,8 @@ class NewHand extends GameState
 
         $playerScore = $this->bga->playerScore;
         $playerScore->inc($activePlayerId, 1);
-        if ($playerScore->get($activePlayerId) > 9) {
-            return GameOver::class;
+        if ($playerScore->get($activePlayerId) >= $winningScore) {
+            return 99;
         }
 
         $st = $game->reset();

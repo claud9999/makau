@@ -53,7 +53,10 @@ class CardManager
 
     public function setup($playerCount)
     {
-        $deckCount = intdiv($playerCount - 1, 4) + 1;
+        $deckCount = $this->game->tableOptions->get(102);
+        if ($deckCount == 10)
+            $deckCount = intdiv($playerCount - 1, 4) + 1;
+
         $cards = [];
         foreach ([Game::SPADE, Game::HEART, Game::CLUB, Game::DIAMOND] as $suit) {
             foreach (range(1, 13) as $rank) {

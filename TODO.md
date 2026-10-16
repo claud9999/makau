@@ -1,6 +1,6 @@
 # TODO
 
-* game options (number of decks, hands to win game, sequences)
+* game options (sequences)
 * write up rules
 * when a player wins a hand, confirm with all players before re-dealing
 * better "buttons"/graphics/fonts
