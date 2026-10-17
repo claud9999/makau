@@ -285,7 +285,7 @@ class GameOn extends GameState
                             }
                             break;
                         default:
-                            if ($game->tableOptions->get(103) == 1 && $i == 0)
+                            if ($game->tableOptions->get(103) == 0 && $i == 0)
                                 return $game->err($currentPlayerId, 'Sequences not allowed per table option.');
                             if (
                                 $top->rank != Game::QUEEN
