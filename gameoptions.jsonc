@@ -81,5 +81,17 @@
       }
     },
     "default": 1
+  },
+  "104": {
+    "name": "Starting hand size",
+    "values": {
+      "3": {"name": "3 cards"},
+      "4": {"name": "4 cards"},
+      "5": {"name": "5 cards"},
+      "6": {"name": "6 cards"},
+      "7": {"name": "7 cards"},
+      "8": {"name": "8 cards"}
+    },
+    "default": 5
   }
 }

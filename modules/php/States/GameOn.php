@@ -58,8 +58,6 @@ class GameOn extends GameState
         $game = $this->game;
         $cards = $game->cards;
 
-        // $game->notify->all('Debug', 'actPass(' . ", {$currentPlayerId})");
-
         $st = json_decode($this->bga->globals->get('state'), true);
 
         $demand = $st['demand'];
@@ -116,8 +114,6 @@ class GameOn extends GameState
     {
         $game = $this->game;
         $cards = $game->cards;
-
-        // $game->notify->all('Debug', 'actDraw(' . ", {$currentPlayerId})");
 
         $st = json_decode($this->bga->globals->get('state'), true);
 
@@ -562,18 +558,32 @@ class GameOn extends GameState
                         case Game::ACE:
                         case Game::JOKER:
                             $actionCards[] = $card;
+                            // TODO: add joker to non-action too?
                             break;
                         default:
-                            if (
-                                $card->rank == $top->rank
-                                || $card->suit == $top->suit
-                                || $top->rank == Game::QUEEN
-                            )
-                                $nonActionCards[] = $card;
+                            $nonActionCards[] = $card;
                     }
                 }
 
-                if (count($actionCards) > 0) {
+                $longest = [];
+                for ($i = 0; $i < count($nonActionCards); $i++) {
+                    $l = $this->findLongestSeq($discards[count($discards) - 1], $nonActionCards);
+                    if (count($l) > count($longest)) $longest = $l;
+                }
+                array_splice($longest, 0, 1); // remove the top discard card
+
+                if (count($actionCards) == 0 && count($longest) == 0) {
+                    if ($st['drew'] > 0)
+                        return $this->actPass($playerId);
+
+                    $this->actDraw($playerId);
+                    return $this->zombie($playerId);
+                }
+
+                $playNonAction = rand(0, count($longest)) > 0;
+                if (count($actionCards) < 1) $playNonAction = 1;
+
+                if ($playNonAction == 0) {
                     $card = $actionCards[rand(0, count($actionCards) - 1)];
 
                     switch ($card->rank) {
@@ -604,14 +614,8 @@ class GameOn extends GameState
                     }
 
                     return $this->actPlay([$card->id], $jokers, $playerId, $rankDemand, $suitDemand);
-                } else if (count($nonActionCards) > 0) {
-                    // TODO: handle sequences, possibly more valuable than action cards!
-                    $card = $nonActionCards[rand(0, count($nonActionCards) - 1)];
-                    return $this->actPlay([$card->id], $jokers, $playerId);
                 } else {
-                    if ($st['drew'] > 0) return $this->actPass($playerId);
-                    $this->actDraw($playerId);
-                    return $this->zombie($playerId);
+                    return $this->actPlay(array_map(fn($card) => $card->id, $longest), $jokers, $playerId);
                 }
             case Game::DRAW_DEMAND:
                 foreach ($handCards as $card) {
@@ -740,6 +744,33 @@ class GameOn extends GameState
                     return $this->actPass($playerId);
                 }
         }
+    }
+
+    function findLongestSeq($card, $cards): array
+    {
+        $longest = [];
+        for ($i = 0; $i < count($cards); $i++) {
+            $otherCard = $cards[$i];
+            if (
+                $card->rank == Game::QUEEN
+                || $otherCard->rank == Game::QUEEN
+                || $card->rank == $otherCard->rank
+                || $card->suit == $otherCard->suit
+                && abs($card->rank - $otherCard->rank) < 2
+            ) {
+                $others = $cards;
+                array_splice($others, $i, 1);
+                $l = $this->findLongestSeq($otherCard, $others);
+                if (
+                    count($l) > count($longest)
+                    // prefer to not end on queen as it gives other player more options
+                    || count($l) == count($longest)
+                    && $longest[count($longest) - 1]->rank == Game::QUEEN
+                ) $longest = $l;
+            }
+        }
+        array_splice($longest, 0, 0, [$card]);
+        return $longest;
     }
 
     function getDrawCards($cards): array

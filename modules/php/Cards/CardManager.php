@@ -41,10 +41,10 @@ class CardManager
         $this->reset();
 
         foreach ($player_ids as $player_id)
-            $cards->pickItems(5, 'deck', ['hand', (int)$player_id])->values();
+            $cards->pickItems($this->game->tableOptions->get(104), 'deck', ['hand', (int)$player_id])->values();
 
         $discard = $cards->pickItem('deck', 'discard');
-        // keep adding to discard until we find a non-action card
+        // find a non-action card
         while ($discard->rank < 5 || $discard->rank > 10) {
             $cards->moveItem($discard, 'deck', 0);
             $discard = $cards->pickItem('deck', 'discard');

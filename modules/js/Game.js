@@ -453,7 +453,6 @@ export class Game {
                     initialSide: 'front',
                     finalSide: 'front',
                     fromElement: this.deck.getElement(),
-                    duration: 500,
                     fadeIn: true,
                 });
             }
@@ -590,7 +589,7 @@ export class Game {
                 break;
             default:
                 if (!st.sequencesAllowed && playCards.length > 0) break;
-                
+
                 let top = this.discard.cards[this.discard.cards.length - 1];
                 if (playCards.length > 0) top = playCards[playCards.length - 1];
 
@@ -797,7 +796,6 @@ export class Game {
                 initialSide: 'front',
                 finalSide: 'front',
                 fadeIn: true,
-                duration: 500,
                 fromElement: this.deck.getElement(),
             });
             this.st.drew = 1;
@@ -815,13 +813,16 @@ export class Game {
         if (this.spectator || args.playerId != this.playerId) elt = this[`hand${args.playerId}`].getElement();
         else elt = this.hand.getElement();
 
-        await this.discard.addCards(Array.from(Object.values(args.cards)), {
-            initialSide: 'front',
-            finalSide: 'front',
-            fadeIn: true,
-            duration: 1000,
-            fromElement: elt,
-        });
+        let cards = Array.from(Object.values(args.cards));
+
+        for (let i = 0; i < cards.length; i++) {
+            await this.discard.addCard(cards[i], {
+                initialSide: 'front',
+                finalSide: 'front',
+                fadeIn: true,
+                fromElement: elt,
+            });
+        }
 
         this.updateHandSize(args.playerId, args[`hand${args.playerId}`]);
 
