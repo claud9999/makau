@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Bga\Games\makaucloudnein;
+namespace Bga\Games\Makau;
 
-use Bga\Games\makaucloudnein\States\GameStart;
-use Bga\Games\makaucloudnein\Cards\CardManager;
+use Bga\Games\Makau\States\GameStart;
+use Bga\Games\Makau\Cards\CardManager;
 
 class Game extends \Bga\GameFramework\Table
 {

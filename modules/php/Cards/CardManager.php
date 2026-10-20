@@ -1,11 +1,11 @@
 <?php
 
-namespace Bga\Games\makaucloudnein\Cards;
+namespace Bga\Games\Makau\Cards;
 
 use Bga\GameFramework\Components\ItemManager\ItemLocation;
 use Bga\GameFramework\Components\ItemManager\ItemManager;
-use Bga\Games\makaucloudnein\Game;
-use Bga\Games\makaucloudnein\Cards\Card;
+use Bga\Games\Makau\Game;
+use Bga\Games\Makau\Cards\Card;
 
 class CardManager
 {

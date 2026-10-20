@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Bga\Games\makaucloudnein\States;
+namespace Bga\Games\Makau\States;
 
-use Bga\Games\makaucloudnein\States\GameOn;
-use Bga\Games\makaucloudnein\States\NewHand;
+use Bga\Games\Makau\States\GameOn;
+use Bga\Games\Makau\States\NewHand;
 
-use Bga\Games\makaucloudnein\Game;
+use Bga\Games\Makau\Game;
 use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\GameState;
 

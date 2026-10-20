@@ -134,18 +134,14 @@ export class Game {
         } else {
             html += `
             <div id="table">
-                <div class="deckdiscardplay">
-                    <div style="flex: column; width:20%;">
+                <table border="0" width="100%"><tr><td width="20%" valign="top">
                         <div id="deck" class="deck"></div>
-                    </div>
-                    <div style="flex: column; width:20%;">
+                        </td><td width="20%" valign="top">
                         <div id="play" class="play"></div>
-                    </div>
-                    <div style="flex: column; width:60%">
+                        </td><td width="60%" valign="top">
                         <div id="discard" class="discard"></div>
-                    </div>
-                </div><!-- deckdiscardplay -->
-                <div class="players">
+                </td></tr></table>
+                <table border="0" width="100%"><tr><td valign="top">
                 <div style="flex: column; flex-grow: 1;">
                         <div id="hand" class="hand"></div>
                         <div id="buttons">
@@ -155,6 +151,7 @@ export class Game {
                         <span id="makau${this.playerId}"></span>
                         </div>
                     </div>
+                    </td>
             `;
         }
 
@@ -163,24 +160,24 @@ export class Game {
 
             if (this.spectator) {
                 html += `
-                    <div style="flex: column; width:30%;">
+                    <td valign="top">
                         <div id="hand${playerId}" class="player"></div>
-                    </div>
+                    </td>
             `;
             } else {
                 if (playerId == this.playerId) continue;
 
                 html += `
-                    <div style="flex: column; width:30%;">
+                    <td valign="top">
                         <div id="hand${playerId}" class="player"></div>
                         <div id="makau${playerId}"></div>
-                    </div>
+                    </td>
             `;
             }
         }
 
         html += `
-                </div><!-- players -->
+            </tr></table>
             </div><!-- table -->
             `;
 
@@ -282,10 +279,23 @@ export class Game {
 
             this.hand.onCardClick = (card) => {
                 if (args.gamestate.name != "GameOn") this.hand.unselectAll();
-                if (card.rank == JOKER)
-                    this.jokerRank(card);
-                else {
-                    this.play.addCard(card);
+                if (this.hand.getSelection().includes(card)) {
+                    switch (card.rank) {
+                        case ACE:
+                            this.pickSuit(card);
+                            break;
+                        case JACK:
+                            this.pickRank(card);
+                            break;
+                        case JOKER:
+                            this.jokerRank(card);
+                            break;
+                        default:
+                            this.play.addCard(card);
+                            this.setPlayOptions();
+                            break;
+                    }
+                } else {
                     this.setPlayOptions();
                 }
             }
@@ -304,6 +314,8 @@ export class Game {
                 this.hand.addCards(this.play.getCards());
                 this.bga.actions.performAction('actDraw');
                 this.hand.setSelectionMode('none');
+                this.rankDemand = null;
+                this.suitDemand = null;
             }, {
                 'destination': document.getElementById("drawButton"),
                 'disabled': true
@@ -314,7 +326,11 @@ export class Game {
                     'actPlay', {
                     cardIds: this.play.getCards().map((card) => card.id),
                     jokers: JSON.stringify(this.jokers),
-                })
+                    rankDemand: this.rankDemand,
+                    suitDemand: this.suitDemand,
+                });
+                this.rankDemand = null;
+                this.suitDemand = null;
             }, {
                 'destination': document.getElementById("playButton"),
                 'disabled': true
@@ -324,6 +340,8 @@ export class Game {
                 this.hand.addCards(this.play.getCards());
                 this.bga.actions.performAction('actPass');
                 this.hand.setSelectionMode('none');
+                this.rankDemand = null;
+                this.suitDemand = null;
             }, {
                 'destination': document.getElementById("passButton"),
                 'disabled': true
@@ -348,8 +366,81 @@ export class Game {
         this.setPlayOptions();
     }
 
+    pickRank(card) {
+        debugger;
+        let statusBar = this.bga.statusBar;
+        let cards = this.hand.cards;
+        let allowed = [];
+
+        statusBar.removeActionButtons();
+
+        for (let i = 0; i < cards.length; i++) {
+            let card = cards[i];
+            if (card.rank > 4 && card.rank < 11 && !allowed.includes(card.rank)) {
+                allowed.push(card.rank);
+            }
+        }
+        allowed.sort();
+
+        statusBar.setTitle('Select a rank.');
+        this.rankButtons = [];
+        for (let i = 0; i < allowed.length; i++) {
+            this.rankButtons[i] = statusBar.addActionButton(_(`${this.cardTypes.rank[allowed[i]]}`), () => {
+                this.setRank(card, allowed[i]);
+            });
+        }
+        this.rankButtons[i] = statusBar.addActionButton(_('any'), () => {
+            this.setRank(card, 20);
+        });
+    }
+
+    setRank(card, rank) {
+        debugger;
+        this.bga.statusBar.removeActionButtons();
+        this.rankDemand = rank;
+
+        this.play.addCard(card);
+        this.setPlayOptions();
+    }
+
+    pickSuit(card) {
+        debugger;
+        let statusBar = this.bga.statusBar;
+        let cards = this.hand.cards;
+        let allowed = [];
+
+        statusBar.removeActionButtons();
+
+        for (let i = 0; i < cards.length; i++) {
+            let card = cards[i];
+            if (card.rank > 4 && card.rank < 11 && !allowed.includes(card.suit)) {
+                allowed.push(card.suit);
+            }
+        }
+        allowed.sort();
+
+        statusBar.setTitle('Select a suit.');
+        this.suitButtons = [];
+        for (let i = 0; i < allowed.length; i++) {
+            this.suitButtons[i] = statusBar.addActionButton(`${this.cardTypes.suitUnicode[allowed[i]]}`, () => {
+                this.setSuit(card, allowed[i]);
+            });
+        }
+        this.suitButtons[i] = statusBar.addActionButton(_('any'), () => {
+            this.setSuit(card, 20);
+        });
+    }
+
+    setSuit(card, suit) {
+        debugger;
+        this.bga.statusBar.removeActionButtons();
+        this.suitDemand = suit;
+
+        this.play.addCard(card);
+        this.setPlayOptions();
+    }
+
     jokerRank(card) {
-        // Handle joker rank logic
         let statusBar = this.bga.statusBar;
         let st = this.st;
         let allowed = [ACE, 2, 3, 4, 5, 6, 7, 8, 9, 10, JACK, QUEEN, KING];
@@ -399,16 +490,13 @@ export class Game {
     }
 
     jokerSet(card, rank, suit) {
-        let statusBar = this.bga.statusBar;
-
-        statusBar.removeActionButtons();
+        this.bga.statusBar.removeActionButtons();
         this.jokers[card.id] = { rank: rank, suit: suit };
         card.rank = rank;
         card.suit = suit;
 
         this.play.addCard(card);
         this.setPlayOptions();
-
     }
 
     enablePlay() { this.playButton.disabled = false; }
@@ -678,87 +766,6 @@ export class Game {
 
         this.bga.notifications.setupPromiseNotifications({
             // logger: console.log
-        });
-    }
-
-    pickRank() {
-        let statusBar = this.bga.statusBar;
-
-        statusBar.removeActionButtons();
-
-        if (this.spectator || this.bga.players.getActivePlayerId() != this.playerId) {
-            statusBar.setTitle(`${this.bga.players.getPlayerById(activePlayerId).name} is selecting a rank.`);
-            return;
-        }
-
-        let cards = this.hand.cards;
-
-        statusBar.setTitle('Select a rank.');
-        this.rankButtons = [];
-        let availableRanks = [];
-
-        for (let i = 0; i < cards.length; i++) {
-            let card = cards[i];
-            if (card.rank > 4 && card.rank < 11) {
-                availableRanks[card.rank] = card.rank;
-            }
-        }
-
-        for (let i = 5; i < 11; i++) {
-            if (availableRanks[i] == undefined) continue;
-            this.rankButtons[i] = statusBar.addActionButton(_(`${i}`), () => {
-                this.bga.actions.performAction(
-                    'actPickRank', {
-                    rank: i
-                });
-            });
-        }
-
-        this.rankButtons[11] = this.bga.statusBar.addActionButton(_('any'), () => {
-            this.bga.actions.performAction(
-                'actPickRank', {
-                rank: ANY_RANK,
-            });
-        });
-    }
-
-    pickSuit() {
-        let statusBar = this.bga.statusBar;
-        let st = this.st;
-        statusBar.removeActionButtons();
-
-        if (this.spectator || this.bga.players.getActivePlayerId() != this.playerId) {
-            statusBar.setTitle(`${this.bga.players.getPlayerById(activePlayerId).name} is selecting a rank.`);
-            return;
-        }
-
-        let cards = this.hand.cards;
-
-        statusBar.setTitle('Select a suit.');
-        this.suitButtons = [];
-        let availableSuits = [];
-
-        for (let i = 0; i < cards.length; i++) {
-            let card = cards[i];
-            if (card.rank < 5 || card.rank > 10) continue;
-            // only non-action cards
-            availableSuits[card.suit] = card.suit;
-        }
-
-        for (let i = 1; i < 5; i++) {
-            if (availableSuits[i] == undefined) continue;
-            this.suitButtons[i] = statusBar.addActionButton(_(`${this.cardTypes["suitUnicode"][i]}`), () => {
-                this.bga.actions.performAction(
-                    'actPickSuit', {
-                    suit: i
-                });
-            });
-        }
-        this.suitButtons[5] = statusBar.addActionButton(_('any'), () => {
-            this.bga.actions.performAction(
-                'actPickSuit', {
-                suit: ANY_SUIT
-            });
         });
     }
 

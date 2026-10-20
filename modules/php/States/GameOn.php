@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Bga\Games\makaucloudnein\States;
+namespace Bga\Games\Makau\States;
 
-use Bga\Games\makaucloudnein\States\NextPlayer;
+use Bga\Games\Makau\States\NextPlayer;
 
-use Bga\Games\makaucloudnein\Game;
+use Bga\Games\Makau\Game;
 use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\PossibleAction;
 use Bga\GameFramework\Actions\CheckAction;
@@ -421,58 +421,6 @@ class GameOn extends GameState
         if ($rankPick == 0 && $suitPick == 0)
             return NextPlayer::class;
     }
-
-    #[PossibleAction]
-    public function actPickRank(int $rank, int $currentPlayerId)
-    {
-        $game = $this->game;
-
-        $st = json_decode($this->bga->globals->get('state'), true);
-
-        if ($st['rankPick'] != $currentPlayerId) return null;
-
-        $st['rankPick'] = 0;
-        $st['demand'] = GAME::RANK_DEMAND;
-        $st['demandArg'] = $rank;
-        $st['lastJack'] = $currentPlayerId;
-
-        $this->bga->globals->set('state', json_encode($st));
-
-        // vvvvvv parameters not saved but sent to the client
-        $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
-        $st['rankDemandName'] = $game->cardTypes['rank'][$rank]['name'];
-
-        $this->game->bga->notify->all('Selected', clienttranslate('${playerName} demands everyone play ${rankDemandName}.'), $st);
-
-        if ($st['reverse'] > 0) return PrevPlayer::class;
-        else return NextPlayer::class;
-    }
-
-    #[PossibleAction]
-    public function actPickSuit(int $suit, int $currentPlayerId)
-    {
-        $game = $this->game;
-
-        $st = json_decode($this->bga->globals->get('state'), true);
-
-        if ($st['suitPick'] != $currentPlayerId) return null;
-
-        $st['suitPick'] = 0;
-        $st['demand'] = GAME::SUIT_DEMAND;
-        $st['demandArg'] = $suit;
-
-        $this->bga->globals->set('state', json_encode($st));
-
-        // vvvvvv parameters not saved but sent to the client
-        $st['playerName'] = $game->getPlayerNameById($currentPlayerId);
-        $st['suitName'] = $game->cardTypes['suit'][$st['demandArg']]['name'] . ' suit';
-
-        $this->game->bga->notify->all('Selected', clienttranslate('${playerName} demands the next player play a non-action card of ${suitName}.'), $st);
-
-        if ($st['reverse'] > 0) return PrevPlayer::class;
-        else return NextPlayer::class;
-    }
-
 
     #[CheckAction(false)]
     public function actMakau(int $onPlayerId, int $currentPlayerId)

@@ -1,6 +1,6 @@
 <?php
 
-namespace Bga\Games\makaucloudnein\Cards;
+namespace Bga\Games\Makau\Cards;
 
 use Bga\GameFramework\Components\ItemManager\Item;
 use Bga\GameFramework\Components\ItemManager\ItemField;
