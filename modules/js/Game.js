@@ -122,28 +122,28 @@ export class Game {
             <div id="table">
                 <div class="deckdiscardplay">
                     <div style="flex: column; width:20%;">
-                        <div id="deck" class="deck"></div>
+                        <div id="deck"></div>
                     </div>
                     <div style="flex: column; width:60%">
-                        <div id="discard" class="discard"></div>
+                        <div id="discard"></div>
                     </div>
                 </div><!-- deckdiscardplay -->
-                <div class="players">
+                <div>
             `;
 
         } else {
             html += `
             <div id="table">
                 <table border="0" width="100%"><tr><td width="20%" valign="top">
-                        <div id="deck" class="deck"></div>
+                        <div id="deck"></div>
                         </td><td width="20%" valign="top">
-                        <div id="play" class="play"></div>
+                        <div id="play"></div>
                         </td><td width="60%" valign="top">
-                        <div id="discard" class="discard"></div>
+                        <div id="discard"></div>
                 </td></tr></table>
                 <table border="0" width="100%"><tr><td valign="top">
                 <div style="flex: column; flex-grow: 1;">
-                        <div id="hand" class="hand"></div>
+                        <div id="hand"></div>
                         <div id="buttons">
                         <span id="drawButton"></span>
                         <span id="playButton"></span>
@@ -161,7 +161,7 @@ export class Game {
             if (this.spectator) {
                 html += `
                     <td valign="top">
-                        <div id="hand${playerId}" class="player"></div>
+                        <div id="hand${playerId}"></div>
                     </td>
             `;
             } else {
@@ -169,7 +169,7 @@ export class Game {
 
                 html += `
                     <td valign="top">
-                        <div id="hand${playerId}" class="player"></div>
+                        <div id="hand${playerId}"></div>
                         <div id="makau${playerId}"></div>
                     </td>
             `;

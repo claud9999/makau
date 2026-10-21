@@ -191,7 +191,8 @@ class Game extends \Bga\GameFramework\Table
                 $highest = $playerScore->get($playerId) > $highest;
         }
 
-        return $highest * 10;
+        return $highest * 100 / $this->tableOptions->get(101);
+;
     }
 
     public function err($currentPlayerId, $message)
